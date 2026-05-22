@@ -1,0 +1,35 @@
+% Figure 3 — Hawkeye architecture: a drop-in structure channel for DyGFormer.
+% \input{figures/fig_arch} inside a figure environment.
+\begin{tikzpicture}[
+  every node/.style={font=\footnotesize},
+  box/.style={rounded corners,draw,align=center,inner sep=3pt,
+              text width=0.80\columnwidth,minimum height=11mm},
+  cpu/.style={box,fill=gray!12},
+  gpu/.style={box,fill=blue!8},
+  bb/.style ={box,draw,dashed,fill=none,minimum height=14mm},
+  fl/.style ={-{Latex[length=2mm]},line width=0.7pt},
+  node distance=4.2mm]
+
+  \node (stream) {edge stream $(u,v,t)$};
+  \node[cpu,below=of stream] (A)
+    {\textbf{(A) Cohesion Cache}\,\footnotesize(CPU)\\[1pt]
+     incremental $k$-core / degree $+$ CSR adjacency};
+  \node[cpu,below=of A] (B)
+    {\textbf{(B) Pairwise Feature Extraction}\\[1pt]
+     2-hop cohesive-bridge features per slot};
+  \node[gpu,below=of B] (C)
+    {\textbf{(C) Cohesion Slot Encoder}\,\footnotesize(GPU)\\[1pt]
+     MLP $\rightarrow$ per-slot structure embedding};
+  \node[bb,below=of C] (T)
+    {\textbf{DyGFormer Transformer}\,\footnotesize(unchanged)\\[1pt]
+     [\,interaction\,]\,[\,time\,]\,[\,\textbf{structure}\,] $\rightarrow$ link score};
+
+  \draw[fl] (stream) -- (A);
+  \draw[fl] (A) -- (B);
+  \draw[fl] (B) -- (C);
+  \draw[fl] (C) -- (T) node[midway,right,font=\scriptsize] {structure channel};
+
+  % "our replacement" bracket over A-B-C
+  \node[orange!85!black,font=\scriptsize,rotate=90] at ($(A.west)!0.5!(C.west)+(-3.5mm,0)$)
+    {Hawkeye (replaces cooccurrence)};
+\end{tikzpicture}
