@@ -291,7 +291,7 @@ the $k$-core:
 c(v)=\max\{k:v\in k\text{-core}(\Gcal(t))\}.
 \end{equation}
 Intuition: ``do your neighbours have enough neighbours of their own?''. The
-classical decomposition (Algorithm~\ref{alg:kcore}, Batagelj
+classical decomposition (Batagelj
 \& Zaver\v{s}nik~\cite{batagelj2003cores}) computes $c(v)$ for every node in
 $O(m)$ by repeated bucket-peeling of the lowest-degree node.
 
@@ -304,8 +304,7 @@ by at least $k-2$ triangles \emph{within $H$}, and $H$ is maximal. The
 \tau(v)=\max\{k:\exists\,(v,w)\in k\text{-truss}(\Gcal(t))\}.
 \end{equation}
 Intuition: ``do your neighbours know each other (closed triangles)?''. The
-standard support-peeling decomposition (Algorithm~\ref{alg:ktruss},
-Wang \& Cheng~\cite{wang2012truss}) runs in $O(m^{1.5})$.
+standard support-peeling decomposition (Wang \& Cheng~\cite{wang2012truss}) runs in $O(m^{1.5})$.
 
 \medskip
 \noindent\textbf{$k$-clique (limit).} A $k$-clique is a fully-connected
@@ -329,47 +328,6 @@ $O(1)$ per inserted edge for degree, $O(\text{local})$ amortised for
 $k$-core, up to $O(m^{1.5})$ recomputed for $k$-truss
 \cite{batagelj2003cores,cohen2008trusses,wang2012truss}. This trade-off
 guides our default cache configuration (Section~\ref{sec:method-cohesion-cache}).
-
-\begin{algorithm}[t]
-\caption{$k$-core decomposition (Batagelj \& Zaver\v{s}nik~\cite{batagelj2003cores}). Minimal form, $O(m)$.}
-\label{alg:kcore}
-\small
-\begin{algorithmic}[1]
-\Require simple graph $G=(V,E)$
-\Ensure core number $c(v)$ for each $v\in V$
-\State $d(v)\gets \deg_G(v)$ \textbf{for all} $v$
-\State bin-sort $V$ by $d(\cdot)$ in $O(n+m)$
-\While{$V$ is non-empty}
-  \State $v\gets$ vertex with smallest current $d(v)$
-  \State $c(v)\gets d(v)$
-  \ForAll{neighbours $u$ of $v$ still in $V$}
-    \If{$d(u)>d(v)$} \State $d(u)\gets d(u)-1$;\ re-bucket $u$ \EndIf
-  \EndFor
-  \State remove $v$ from $V$
-\EndWhile
-\end{algorithmic}
-\end{algorithm}
-
-\begin{algorithm}[t]
-\caption{$k$-truss decomposition (support peeling, Wang \& Cheng~\cite{wang2012truss}). Minimal form, $O(m^{1.5})$.}
-\label{alg:ktruss}
-\small
-\begin{algorithmic}[1]
-\Require simple graph $G=(V,E)$
-\Ensure trussness $\tau(e)$ for each $e\in E$;\ \ $\tau(v)=\max_{e\ni v}\tau(e)$
-\State $s(e)\gets|\Ncal(u)\cap\Ncal(v)|$ for every edge $e=(u,v)$ \Comment{triangle support}
-\State $k\gets 2$
-\While{$E$ non-empty}
-  \While{$\exists\,e\in E$ with $s(e)\le k-2$}
-    \State $\tau(e)\gets k$;\quad remove $e$ from $E$
-    \ForAll{triangles $(e,e_1,e_2)$ still alive}
-      \State $s(e_1)\gets s(e_1)-1$;\quad $s(e_2)\gets s(e_2)-1$
-    \EndFor
-  \EndWhile
-  \State $k\gets k+1$
-\EndWhile
-\end{algorithmic}
-\end{algorithm}
 
 \subsection{The 2-hop Cohesive Bridge}
 \label{sec:2hop}
