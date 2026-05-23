@@ -44,11 +44,15 @@ run() {
       || echo "    FAILED ${DS} ${TAG}  -- see logs/${DS}_${TAG}.log"
 }
 
-# --- tgbl-mooc (411K bipartite, full single-pass with k-family + 2-hop bridge)
-run tgbl-mooc    sp_pwall      --indicators degree,core --pairwise_mode all      --single_pass --batch_size 5000
+# NOTE: tgbl-mooc was removed — the installed tgb library version does not
+# support it (raises "default evaluation metric not found").  mooc lives in
+# DGB and gets the full 12-run sweep via mooc_4ch_3seed (separate job 72071).
 
-# --- tgbl-review (recommendation, mid-sized, single-pass + cohesion pairwise)
+# --- tgbl-review (large recommendation TGB dataset, single-pass + cohesion pairwise)
 run tgbl-review  sp_pwcoh      --indicators degree,core --pairwise_mode cohesion --single_pass --batch_size 5000
+
+# --- tgbl-coin (22M, degree+core + cohesion pairwise — has discAUC heatmap entry, this adds training-side baseline)
+run tgbl-coin    sp_pwcoh      --indicators degree,core --pairwise_mode cohesion --single_pass --batch_size 10000
 
 # --- tgbl-comment (44M edges, degree+core only, no pairwise — scalability)
 run tgbl-comment sp_deg_core   --indicators degree,core --no_pairwise            --single_pass --batch_size 10000

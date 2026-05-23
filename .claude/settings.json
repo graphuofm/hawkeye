@@ -399,7 +399,10 @@
       "Bash(grep -nE '^PY=|python|$PY' /home/jding/CIKM2026frp/migrate/uci_4ch_3seed.slurm)",
       "Bash(sed -i 's|cd /project/jding2/hawkeye|cd /project/jding2/hawkeye\\\\nPY=/project/jding2/hkenv/bin/python|; s|timeout 7200 python |timeout 7200 \"$PY\" |' /home/jding/CIKM2026frp/migrate/big_singlepass.slurm)",
       "Bash(grep -nE '^PY=|python|$PY' /home/jding/CIKM2026frp/migrate/big_singlepass.slurm)",
-      "Bash(ITGR_PW='ABcd12!$efGH34^' timeout 120 /home/jding/miniconda3/envs/tgnn/bin/python /tmp/itiger_resubmit.py)"
+      "Bash(ITGR_PW='ABcd12!$efGH34^' timeout 120 /home/jding/miniconda3/envs/tgnn/bin/python /tmp/itiger_resubmit.py)",
+      "Bash(ITGR_PW='ABcd12!$efGH34^' timeout 90 /home/jding/miniconda3/envs/tgnn/bin/python /tmp/itiger_progress2.py)",
+      "Bash(ITGR_PW='ABcd12!$efGH34^' timeout 60 /home/jding/miniconda3/envs/tgnn/bin/python /tmp/itiger_deep_diag.py)",
+      "Bash(ITGR_PW='ABcd12!$efGH34^' timeout 90 /home/jding/miniconda3/envs/tgnn/bin/python /tmp/itiger_resubmit_big.py)"
     ],
     "additionalDirectories": [
       "/home/jding/CIKM2026frp/gev",
