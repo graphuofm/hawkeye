@@ -391,10 +391,10 @@ characterise the structural signal. On six TGB and five DGB datasets we
 stream each benchmark chronologically and, for every validation edge and
 a random negative, compute each candidate structural feature on
 $\Gcal(<t)$, reporting its \emph{discriminability AUC} (discAUC): the
-probability it ranks the true edge above a negative. discAUC $=0.50$ is
-random; the full single-feature sweep on TGB is in
-Figure~\ref{fig:discauc-heatmap}, and a 1-hop/2-hop summary including
-the DGB datasets is in Table~\ref{tab:discauc}.
+probability it ranks the true edge above a negative. discAUC $=0.50$ is random. Table~\ref{tab:discauc} summarises the
+1-hop / 2-hop / core-weighted-2-hop signals on all eleven datasets; a
+larger sweep over $21$ candidate features on the six TGB datasets is
+included as supplementary data with the released code.
 
 \paragraph{Finding 1: 1-hop CN is near-random on sparse graphs; 2-hop is the signal.}
 Table~\ref{tab:discauc} reports the discAUC of the 1-hop common neighbour
@@ -425,7 +425,12 @@ these (\S\ref{sec:exp}).
 In short, the 1-hop CN being near-random is not a universal claim --- it
 holds in regime (a) and structurally in (b) --- but the 2-hop bridge as a
 signal is informative in (a), dominant in (b), saturated in (c), and
-absent in (d).
+absent in (d). The full $21$-feature sweep (released as supplementary
+data) further shows that node-level \emph{popularity priors} ---
+\texttt{degree.*}, \texttt{core.*} and their EMA / trend variants ---
+sit consistently between the 1-hop and 2-hop discAUCs, confirming that
+the predictive signal in cohesion is genuinely \emph{pair-structural}
+rather than a one-sided popularity proxy.
 
 \begin{table}[t]
 \caption{Discriminability AUC of 1-hop vs.\ 2-hop structural signals
@@ -466,26 +471,6 @@ near-complete (\texttt{CanParl}, \texttt{USLegis}) where the simple
 informative --- yet the \emph{trained} \method (which uses core-weighted
 features, not the raw count) still wins on both (Table~\ref{tab:swapin}).}
 \end{table}
-
-\begin{figure*}[t]
-\centering
-\includegraphics[width=0.86\textwidth]{figures/fig_discauc_heatmap.pdf}
-\caption{Full single-feature discriminability sweep: $21$ candidate
-features (rows) $\times$ $6$ datasets (columns). The bottom block
-(\texttt{cn}, \texttt{aa}, \texttt{jaccard}, \texttt{cn\_x\_sum},
-\texttt{triangle.current}) are 1-hop pair features --- all stay at the
-random line $0.50$ on the five sparse benchmarks, lifting only on the
-denser \texttt{tgbl-coin}. The top \texttt{cn2}/\texttt{aa2} pair --- our
-2-hop cohesive-bridge family --- consistently dominates, reaching $0.96$
-on \texttt{tgbl-subreddit} and $0.73$--$0.85$ on the four sparse
-datasets. Node-level \emph{popularity priors} (\texttt{degree.*},
-\texttt{core.*}, all rows between \texttt{degree.current} and
-\texttt{core.max\_change}) sit between the two, confirming that the
-predictive signal in cohesion is genuinely \emph{pair-structural} rather
-than a one-sided popularity proxy. This is the comprehensive evidence
-behind the Finding 1 conclusion distilled into Table~\ref{tab:discauc}.}
-\label{fig:discauc-heatmap}
-\end{figure*}
 
 \paragraph{Finding 2: $k$-family weighting $\approx$ raw 2-hop count.}
 The last two columns of Table~\ref{tab:discauc} show that core-weighting the
@@ -871,7 +856,15 @@ Every coloured figure also ships an editable \texttt{.drawio} source
 beside its compiled artefact, so reviewers and adopters can re-style
 or re-annotate without re-running matplotlib or rebuilding TikZ. Each
 figure can be regenerated from its committed data with a single script,
-and each table from the released experiment logs.
+and each table from the released experiment logs. The supplementary
+material also includes the full $21$-feature $\times$ $6$-dataset
+single-feature discriminability heat-map referenced in
+\S\ref{sec:study} (rendered \texttt{fig\_discauc\_heatmap.pdf} plus the
+editable \texttt{.drawio} source), the per-dataset \texttt{.json}
+streaming-discAUC dumps that produced it, and the raw 3-second DGB
+streaming script (\texttt{dgb\_1hop\_discauc.py},
+\texttt{dgb\_corebridge\_discauc.py}) used to fill the DGB block of
+Table~\ref{tab:discauc}.
 
 \begin{table}[t]
 \caption{Dataset statistics used in this paper.  Counts are direct from
