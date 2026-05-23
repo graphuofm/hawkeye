@@ -402,7 +402,14 @@
       "Bash(ITGR_PW='ABcd12!$efGH34^' timeout 120 /home/jding/miniconda3/envs/tgnn/bin/python /tmp/itiger_resubmit.py)",
       "Bash(ITGR_PW='ABcd12!$efGH34^' timeout 90 /home/jding/miniconda3/envs/tgnn/bin/python /tmp/itiger_progress2.py)",
       "Bash(ITGR_PW='ABcd12!$efGH34^' timeout 60 /home/jding/miniconda3/envs/tgnn/bin/python /tmp/itiger_deep_diag.py)",
-      "Bash(ITGR_PW='ABcd12!$efGH34^' timeout 90 /home/jding/miniconda3/envs/tgnn/bin/python /tmp/itiger_resubmit_big.py)"
+      "Bash(ITGR_PW='ABcd12!$efGH34^' timeout 90 /home/jding/miniconda3/envs/tgnn/bin/python /tmp/itiger_resubmit_big.py)",
+      "Bash(ITGR_PW='ABcd12!$efGH34^' timeout 60 /home/jding/miniconda3/envs/tgnn/bin/python /tmp/itiger_dig3.py)",
+      "Bash(timeout 8 curl -s -o /dev/null -w \"%{http_code}\\\\n\" https://object-arbutus.cloud.computecanada.ca/)",
+      "Bash(/home/jding/miniconda3/envs/tgnn/bin/python -c \"import tgb; print\\(tgb.__version__\\)\")",
+      "Bash(ITGR_PW='ABcd12!$efGH34^' timeout 200 /home/jding/miniconda3/envs/tgnn/bin/python /tmp/itiger_test_download.py)",
+      "Bash(chmod +x /home/jding/CIKM2026frp/migrate/run_big_tasks.sh)",
+      "Bash(wait 4639)",
+      "Bash(echo \"[rsync exit: $?]\")"
     ],
     "additionalDirectories": [
       "/home/jding/CIKM2026frp/gev",

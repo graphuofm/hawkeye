@@ -1,0 +1,8 @@
+# Big-TGB single-pass tasks — 1h hard cap each.
+# Format: STATUS DATASET TAG INDICATORS PAIRWISE BATCH_SIZE
+# STATUS: PENDING | RUNNING | DONE | FAILED | SKIP
+# Edit STATUS by hand to retry or skip.
+RUNNING tgbl-review  sp_pwcoh    degree,core cohesion  5000
+RUNNING tgbl-coin    sp_pwcoh    degree,core cohesion  10000
+PENDING tgbl-comment sp_deg_core degree,core none      10000
+RUNNING tgbl-flight  sp_deg_only degree      none      10000
