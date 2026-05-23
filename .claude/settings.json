@@ -387,7 +387,19 @@
       "Bash(ITGR_PW='ABcd12!$efGH34^' timeout 180 /home/jding/miniconda3/envs/tgnn/bin/python /tmp/itiger_gpu_audit.py)",
       "Bash(ITGR_PW='ABcd12!$efGH34^' timeout 120 /home/jding/miniconda3/envs/tgnn/bin/python /tmp/itiger_fanout_audit.py)",
       "Bash(ITGR_PW='ABcd12!$efGH34^' timeout 120 /home/jding/miniconda3/envs/tgnn/bin/python /tmp/itiger_fanout_submit.py)",
-      "Bash(ITGR_PW='ABcd12!$efGH34^' bash /tmp/itiger_watch_5jobs.sh)"
+      "Bash(ITGR_PW='ABcd12!$efGH34^' bash /tmp/itiger_watch_5jobs.sh)",
+      "Bash(ITGR_PW='ABcd12!$efGH34^' timeout 120 /home/jding/miniconda3/envs/tgnn/bin/python /tmp/itiger_check_prof.py)",
+      "Bash(ITGR_PW='ABcd12!$efGH34^' timeout 300 /home/jding/miniconda3/envs/tgnn/bin/python /tmp/itiger_smoke_test.py)",
+      "Bash(ITGR_PW='ABcd12!$efGH34^' timeout 360 /home/jding/miniconda3/envs/tgnn/bin/python /tmp/itiger_smoke_download.py)",
+      "Bash(ITGR_PW='ABcd12!$efGH34^' timeout 120 /home/jding/miniconda3/envs/tgnn/bin/python /tmp/itiger_submit_big.py)",
+      "Bash(ITGR_PW='ABcd12!$efGH34^' timeout 60 /home/jding/miniconda3/envs/tgnn/bin/python /tmp/itiger_check_72072.py)",
+      "Bash(ITGR_PW='ABcd12!$efGH34^' timeout 60 /home/jding/miniconda3/envs/tgnn/bin/python /tmp/itiger_check_73.py)",
+      "Bash(ITGR_PW='ABcd12!$efGH34^' timeout 60 /home/jding/miniconda3/envs/tgnn/bin/python /tmp/itiger_diag.py)",
+      "Bash(sed -i 's|^WF=0.01|WF=0.01\\\\nPY=/project/jding2/hkenv/bin/python|; s|^  python train_link_prediction|  \"$PY\" train_link_prediction|; s|^    python -c|    \"$PY\" -c|' /home/jding/CIKM2026frp/migrate/uci_4ch_3seed.slurm)",
+      "Bash(grep -nE '^PY=|python|$PY' /home/jding/CIKM2026frp/migrate/uci_4ch_3seed.slurm)",
+      "Bash(sed -i 's|cd /project/jding2/hawkeye|cd /project/jding2/hawkeye\\\\nPY=/project/jding2/hkenv/bin/python|; s|timeout 7200 python |timeout 7200 \"$PY\" |' /home/jding/CIKM2026frp/migrate/big_singlepass.slurm)",
+      "Bash(grep -nE '^PY=|python|$PY' /home/jding/CIKM2026frp/migrate/big_singlepass.slurm)",
+      "Bash(ITGR_PW='ABcd12!$efGH34^' timeout 120 /home/jding/miniconda3/envs/tgnn/bin/python /tmp/itiger_resubmit.py)"
     ],
     "additionalDirectories": [
       "/home/jding/CIKM2026frp/gev",

@@ -19,6 +19,7 @@ OUT="$ROOT/results/${DS}_4ch_3seed"
 mkdir -p "$OUT"
 JDIR="saved_results/DyGFormer/${DS}"
 WF=0.01
+PY=/project/jding2/hkenv/bin/python
 
 run() {
   local ch=$1 seed=$2
@@ -28,7 +29,7 @@ run() {
   if [ "$ch" = "gev" ] || [ "$ch" = "both" ]; then
     GEV_ARGS="--gev_indicators degree,core,truss --slot_backend full --gev_window_fraction $WF"
   fi
-  python train_link_prediction.py --dataset_name "$DS" --model_name DyGFormer \
+  "$PY" train_link_prediction.py --dataset_name "$DS" --model_name DyGFormer \
     --patch_size 1 --max_input_sequence_length 32 --num_runs 1 --gpu 0 \
     --num_epochs 15 --patience 4 --structure_channel "$ch" --seed_offset "$seed" \
     $GEV_ARGS \
@@ -37,7 +38,7 @@ run() {
   j=$(ls -t "$JDIR"/*.json 2>/dev/null | head -1)
   if [ -n "$j" ]; then
     cp "$j" "$OUT/${tag}.json"
-    python -c "import json;d=json.load(open('$OUT/${tag}.json'));m=d['test metrics'];n=d['new node test metrics'];print('    DONE ${tag}  test AP=%s  new-node AP=%s'%(m.get('average_precision'),n.get('average_precision')))"
+    "$PY" -c "import json;d=json.load(open('$OUT/${tag}.json'));m=d['test metrics'];n=d['new node test metrics'];print('    DONE ${tag}  test AP=%s  new-node AP=%s'%(m.get('average_precision'),n.get('average_precision')))"
   else
     echo "    ${tag}  NO RESULT -- see log_${tag}.txt"
   fi
