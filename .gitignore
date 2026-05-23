@@ -68,3 +68,7 @@ preview_*.tex
 
 # slurm
 slurm_logs/
+
+# Keep figure PDFs (user-facing artefact)
+!paper_ol/figures/*.pdf
+!paper/figures/*.pdf
