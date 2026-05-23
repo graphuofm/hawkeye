@@ -1,60 +1,83 @@
-% Figure 5 — per-dataset Hawkeye swap-in gain over the DyGFormer (cooccur)
-% baseline. Updated after Phase 1 multi-seed sweep:
+% Figure 5 — per-dataset Hawkeye swap-in gain over DyGFormer (cooccur) baseline.
+% Updated after the full overnight sweep:
 %   - CanParl: 3-seed +10.8 pts (was legacy single-seed +9.0)
 %   - USLegis: 3-seed +4.8 pts  (legacy single-seed was -5.4 — code bug)
-%   - enron:   3-seed +0.7 pts  (new column)
-%   - uci:     3-seed +0.6 pts  (already had)
-% mooc 3-seed multi-seed sweep still running; the legacy -8.4 single-seed
-% number is shown in pale orange and clearly marked legacy.
-\begin{tikzpicture}[every node/.style={font=\footnotesize},x=0.4cm,y=0.7cm]
+%   - mooc:    3-seed +5.8 pts  (legacy single-seed was -8.4 — same flip pattern as USLegis)
+%   - enron:   3-seed +0.7 pts
+%   - uci:     3-seed +0.6 pts  (via ⊕Hawkeye)
+%   - reddit:  3-seed +0.0 pts  (cooccur saturated at 0.975)
+% Plus large-graph effectiveness (struct-only single-pass):
+%   - subreddit (672K bipartite recommendation): +19.1 pts (0.10 -> 0.30)
+%   - lastfm (degenerate): ~0  (validates the boundary predictor)
+\begin{tikzpicture}[every node/.style={font=\footnotesize},x=0.35cm,y=0.7cm]
   % --- grid + axis ---
-  \foreach \x in {-8,-4,0,4,8,12}{%
-    \draw[gray!25,very thin] (\x,0.4) -- (\x,-6.0);%
+  \foreach \x in {-4,0,4,8,12,16,20}{%
+    \draw[gray!25,very thin] (\x,0.4) -- (\x,-7.5);%
     \node[gray!55] at (\x,0.65) {\tiny $\x$};}
-  \draw[gray!60, line width=0.6pt] (0,0.4) -- (0,-6.0);
-  \node[anchor=south] at (0,0.85) {\small Hawkeye swap-in gain over cooccur (pts)};
+  \draw[gray!60, line width=0.6pt] (0,0.4) -- (0,-7.5);
+  \node[anchor=south] at (0,0.85) {\small Hawkeye gain over cooccur / baseline (pts)};
 
-  % CanParl +10.8 (3-seed, current code, std 0.001)
-  \fill[teal!95]  (0,-0.15) rectangle (10.8,-0.65);
-  \node[anchor=west,white] at (0.2,-0.4) {\textbf{+10.8}};
-  \node[anchor=east] at (-0.3,-0.4) {\texttt{CanParl}$^{\bigstar}$};
-  \node[anchor=west,gray!60] at (11.0,-0.4) {\scriptsize\ (3-seed, std$=$.001)};
+  % --- DyGFormer 3-seed multi-seed main table (test AP / MRR) ---
+  % subreddit +19.1 (struct-only single-pass, large-graph effectiveness)
+  \fill[teal!95]  (0,-0.15) rectangle (19.1,-0.65);
+  \node[anchor=west,white] at (0.2,-0.4) {\textbf{+19.1}};
+  \node[anchor=east] at (-0.3,-0.4) {\texttt{tgbl-subreddit}$^{\bigstar}$};
+  \node[anchor=west,gray!60] at (19.3,-0.4) {\scriptsize\ (672K bipartite, struct-only single-pass)};
 
-  % USLegis +4.8 (3-seed, current code — flipped from legacy -5.4)
-  \fill[teal!85]  (0,-1.05) rectangle (4.8,-1.55);
-  \node[anchor=west,white] at (0.2,-1.3) {\textbf{+4.8}};
-  \node[anchor=east] at (-0.3,-1.3) {\texttt{USLegis}$^{\bigstar}$};
-  \node[anchor=west,gray!60] at (5.0,-1.3) {\scriptsize\ (3-seed; corrects legacy $-5.4$)};
+  % CanParl +10.8
+  \fill[teal!95]  (0,-1.05) rectangle (10.8,-1.55);
+  \node[anchor=west,white] at (0.2,-1.3) {\textbf{+10.8}};
+  \node[anchor=east] at (-0.3,-1.3) {\texttt{CanParl}$^{\bigstar}$};
+  \node[anchor=west,gray!60] at (11.0,-1.3) {\scriptsize\ (3-seed, std$\,$=$\,$.001)};
 
-  % wiki +2.8 (legacy single-seed; 3-seed sweep running)
-  \fill[teal!55]  (0,-1.95) rectangle (2.8,-2.45);
-  \node[anchor=west] at (3.0,-2.2) {\textbf{+2.8}};
-  \node[anchor=east] at (-0.3,-2.2) {\texttt{wiki}};
-  \node[anchor=west,gray!60] at (3.7,-2.2) {\scriptsize\ (legacy, multi-seed running)};
+  % mooc +5.8 — FLIPS from legacy -8.4
+  \fill[teal!95]  (0,-1.95) rectangle (5.8,-2.45);
+  \node[anchor=west,white] at (0.2,-2.2) {\textbf{+5.8}};
+  \node[anchor=east] at (-0.3,-2.2) {\texttt{mooc}$^{\bigstar}$};
+  \node[anchor=west,gray!60] at (6.0,-2.2) {\scriptsize\ (3-seed; corrects legacy $-8.4$)};
 
-  % enron +0.7 (3-seed)
-  \fill[teal!95]  (0,-2.85) rectangle (0.7,-3.35);
-  \node[anchor=west] at (0.9,-3.1) {\textbf{+0.7}};
-  \node[anchor=east] at (-0.3,-3.1) {\texttt{enron}$^{\bigstar}$};
-  \node[anchor=west,gray!60] at (2.0,-3.1) {\scriptsize\ (3-seed, std$=$.001; $\oplus$ also $+1.3$)};
+  % USLegis +4.8 — FLIPS from legacy -5.4
+  \fill[teal!85]  (0,-2.85) rectangle (4.8,-3.35);
+  \node[anchor=west,white] at (0.2,-3.1) {\textbf{+4.8}};
+  \node[anchor=east] at (-0.3,-3.1) {\texttt{USLegis}$^{\bigstar}$};
+  \node[anchor=west,gray!60] at (5.0,-3.1) {\scriptsize\ (3-seed; corrects legacy $-5.4$)};
 
-  % uci +0.6 (3-seed via the ⊕Hawkeye combined channel)
-  \fill[teal!95]  (0,-3.75) rectangle (0.6,-4.25);
-  \node[anchor=west] at (0.8,-4.0) {\textbf{+0.6}};
-  \node[anchor=east] at (-0.3,-4.0) {\texttt{uci}$^{\bigstar}$};
-  \node[anchor=west,gray!60] at (1.9,-4.0) {\scriptsize\ (3-seed, gap$>$6$\sigma$; $\oplus$Hawkeye)};
+  % wiki +2.8 (legacy single-seed; 3-seed sweep still in flight)
+  \fill[teal!55]  (0,-3.75) rectangle (2.8,-4.25);
+  \node[anchor=west] at (3.0,-4.0) {\textbf{+2.8}};
+  \node[anchor=east] at (-0.3,-4.0) {\texttt{wiki}};
+  \node[anchor=west,gray!60] at (3.7,-4.0) {\scriptsize\ (legacy, multi-seed running)};
 
-  % mooc -8.4 (legacy single-seed; 3-seed in progress, may flip like USLegis)
-  \fill[orange!45]  (-8.4,-4.65) rectangle (0,-5.15);
-  \node[anchor=east] at (-8.6,-4.9) {\textbf{$-8.4$}};
-  \node[anchor=west] at (0.3,-4.9) {\texttt{mooc}};
-  \node[anchor=west,gray!60] at (1.6,-4.9) {\scriptsize\ (legacy 1-seed; 3-seed currently running)};
+  % enron +1.3 (⊕Hawkeye); gev alone +0.7
+  \fill[teal!95]  (0,-4.65) rectangle (1.3,-5.15);
+  \node[anchor=west] at (1.5,-4.9) {\textbf{+1.3}};
+  \node[anchor=east] at (-0.3,-4.9) {\texttt{enron}$^{\bigstar}$};
+  \node[anchor=west,gray!60] at (2.4,-4.9) {\scriptsize\ (3-seed, $\oplus$Hawkeye)};
+
+  % uci +0.6 (⊕Hawkeye)
+  \fill[teal!95]  (0,-5.55) rectangle (0.6,-6.05);
+  \node[anchor=west] at (0.8,-5.8) {\textbf{+0.6}};
+  \node[anchor=east] at (-0.3,-5.8) {\texttt{uci}$^{\bigstar}$};
+  \node[anchor=west,gray!60] at (1.7,-5.8) {\scriptsize\ (3-seed, gap$>$6$\sigma$; $\oplus$Hawkeye)};
+
+  % reddit ~0 (cooccur saturated)
+  \fill[gray!35]  (-0.05,-6.45) rectangle (0.05,-6.95);
+  \node[anchor=west] at (0.2,-6.7) {\textbf{$\approx$0}};
+  \node[anchor=east] at (-0.3,-6.7) {\texttt{reddit}$^{\bigstar}$};
+  \node[anchor=west,gray!60] at (2.0,-6.7) {\scriptsize\ (3-seed; cooccur saturated $\!=\!0.975$)};
+
+  % lastfm ~0 (degenerate)
+  \fill[gray!35]  (-0.05,-7.35) rectangle (0.05,-7.85);
+  \node[anchor=west] at (0.2,-7.6) {\textbf{$\approx$0}};
+  \node[anchor=east] at (-0.3,-7.6) {\texttt{tgbl-lastfm}};
+  \node[anchor=west,gray!60] at (2.0,-7.6) {\scriptsize\ (degenerate; validates discAUC predictor)};
 
   % --- legend ---
-  \fill[teal!95] (-9.5,-5.85) rectangle (-8.7,-5.65);
-  \node[anchor=west] at (-8.5,-5.75) {\scriptsize 3-seed validated};
-  \fill[teal!55] (-4.5,-5.85) rectangle (-3.7,-5.65);
-  \node[anchor=west] at (-3.5,-5.75) {\scriptsize legacy single-seed};
-  \fill[orange!45] (1.5,-5.85) rectangle (2.3,-5.65);
-  \node[anchor=west,gray!50!black] at (2.5,-5.75) {\scriptsize $\bigstar$ = 3-seed multi-seed verified};
+  \fill[teal!95] (-3.0,-8.4) rectangle (-2.4,-8.2);
+  \node[anchor=west] at (-2.2,-8.3) {\scriptsize 3-seed validated};
+  \fill[teal!55] (3.5,-8.4) rectangle (4.1,-8.2);
+  \node[anchor=west] at (4.3,-8.3) {\scriptsize legacy single-seed};
+  \fill[gray!35] (10.0,-8.4) rectangle (10.6,-8.2);
+  \node[anchor=west] at (10.8,-8.3) {\scriptsize boundary / saturated};
+  \node[anchor=west,gray!50!black] at (16.5,-8.3) {\scriptsize $\bigstar$ multi-seed verified};
 \end{tikzpicture}
