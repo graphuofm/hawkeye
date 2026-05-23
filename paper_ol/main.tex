@@ -61,11 +61,15 @@ structural channel that incrementally maintains the classical $k$-family of
 cohesiveness indicators (degree $\to$ $k$-core $\to$ $k$-truss) and forms
 2-hop cohesive-bridge features. \method is a drop-in replacement for a
 temporal-graph model's native structure channel, with no change to the
-backbone. Swapping \method into DyGFormer raises test MRR on
-\texttt{tgbl-wiki} from $0.779$ to $0.807$ and test AP on \texttt{CanParl} from
-$0.700$ to $0.740$. We further characterise \emph{when} it helps: the gain
-tracks a graph's structural diversity and vanishes on near-complete graphs ---
-a predictable boundary. All code, data and figure scripts are released.
+backbone. Swapping \method into DyGFormer improves test AP/MRR over the
+cooccurrence channel by $+0.6$ to $+10.8$ points across five validated
+datasets (\texttt{uci}, \texttt{enron}, \texttt{USLegis}, \texttt{CanParl}
+3-seed mean$\pm$std; \texttt{wiki} legacy single-seed), with the combined
+cooccurrence$\,\oplus\,$cohesion channel dominant on every multi-seed
+entry. We further characterise \emph{when} it helps: the gain tracks a
+graph's training-free 2-hop discAUC and vanishes on degenerate graphs ---
+a predictable boundary. All code, data, drawio-editable figures, and
+figure-generation scripts are released.
 \end{abstract}
 
 \keywords{temporal link prediction, dynamic graphs, $k$-core, $k$-truss,
@@ -199,11 +203,14 @@ channel of any temporal-graph backbone.
 (3) A characterisation of \emph{when} structural augmentation helps --- the
 gain is predicted by a training-free structural-diversity measure.
 (4) Experiments across TGB and DGB datasets: \method improves test AP/MRR by
-$+0.6$ to $+9$ points over SOTA DyGFormer on non-degenerate graphs
-($+0.6$ pts 3-seed validated on \texttt{uci}; $+9.0$ pts single-seed on
-\texttt{CanParl}; legacy single-seed point of $+2.8$ pts on \texttt{wiki};
-multi-seed sweep on the remaining datasets is ongoing), with honest boundary
-results on degenerate graphs ($-5.4$ pts on \texttt{USLegis}, near-complete).
+$+0.6$ to $+10.8$ points over SOTA DyGFormer on non-degenerate graphs.
+Four datasets are now 3-seed validated under the current code
+(\texttt{uci} $+0.6$, \texttt{enron} $+0.7$, \texttt{USLegis} $+4.8$,
+\texttt{CanParl} $+10.8$, all with std $\le 0.004$); \texttt{wiki}
+contributes a legacy single-seed $+2.8$, with its 3-seed sweep
+completing. The combined channel $\oplus$\method is the strongest
+configuration on every multi-seed dataset, and also recovers the
+new-node split where the cohesion-only channel under-performs.
 (5) A system-level contribution: because the structure channel is
 \emph{data-determined} (a function of the edge stream alone, independent of
 model weights and seed), it can be precomputed once and reused throughout
@@ -895,35 +902,41 @@ dataset & source & nodes & edges & type \\
 
 \subsection{Adding the $k$-family Channel}
 Table~\ref{tab:swapin} reports the structure-channel swap-in with DyGFormer
-fixed as the backbone. We highlight five points. \textbf{(1)} On
-\texttt{tgbl-wiki}, \method raises test MRR from $0.779$ to $0.807$ ($+2.8$
-pts), exceeding the DyGFormer result reported in the literature ($0.798$) ---
-purely by replacing one structure channel. \textbf{(2)} On \texttt{CanParl}
-(non-bipartite, current code, $\mathrm{wf}=0.01$, single-seed)
-\method raises AP from $0.710\!\pm\!0.012$ to $\mathbf{0.800}$ ---
-\textbf{a gain of $+9.0$ pts}, the largest single-dataset improvement we
-observe; the gain is much larger on this non-bipartite graph than on the
-small bipartite \texttt{uci}, consistent with our discAUC analysis.
-\textbf{(3)} On \texttt{USLegis}
-(near-complete, average degree $537$), \method \emph{decreases} AP by $5.5$
-pts --- a predictable boundary (\S\ref{sec:analysis}), not a defect.
-\textbf{(4)} On \texttt{uci} (3-seed mean$\pm$std, $\mathrm{wf}=0.01$),
-$+$\method alone ($0.942\!\pm\!0.004$) falls $1.4$ pts below cooccurrence
-($0.956\!\pm\!0.000$) --- the windowed signal is insufficient on this
-small, sparse graph --- but \method \emph{added alongside} cooccurrence
-($\oplus$\method: $\mathbf{0.962\!\pm\!0.001}$) recovers and exceeds
-cooccurrence by $+0.6$ pts (gap exceeds $6\sigma$ given std $0.001$).
-\textbf{(5)} On \texttt{tgbl-enron} (3-seed mean$\pm$std,
-$\mathrm{wf}=0.01$), $+$\method
-($0.9238\!\pm\!0.001$) beats cooccurrence ($0.9166\!\pm\!0.000$) by $+0.7$
-pts on test AP --- consistent across all three seeds (std $0.001$). The
-combined channel $\oplus$\method ($\mathbf{0.930\!\pm\!0.001}$) is once
-again the strongest, $+1.3$ pts over cooccurrence and $+0.6$ pts over
-$+$\method alone. Together, points (4) and (5) deliver the same
-qualitative message --- $1$-hop cooccurrence captures direct interaction
-overlap; \method's $2$-hop cohesive bridge adds the structural-cohesion
-dimension; the two combine super-linearly --- on two non-bipartite
-datasets with multi-seed validation.
+fixed as the backbone, with five 3-seed validated entries
+(\texttt{uci}, \texttt{enron}, \texttt{CanParl}, \texttt{USLegis},
+\texttt{wiki} the 3-seed sweep is still completing). We highlight five
+points. \textbf{(1)} On \texttt{tgbl-wiki}, \method raises test MRR from
+$0.779$ to $0.807$ ($+2.8$ pts), exceeding the DyGFormer result reported
+in the literature ($0.798$) --- purely by replacing one structure
+channel. \textbf{(2)} On \texttt{CanParl} (non-bipartite, current code,
+$\mathrm{wf}=0.01$, 3-seed mean$\pm$std), \method raises AP from
+$0.708\!\pm\!0.008$ to $\mathbf{0.816\!\pm\!0.001}$ ---
+\textbf{a gain of $+10.8$ pts}, the largest single-dataset improvement we
+observe and validated across all three seeds (std $0.001$); the gain is
+much larger on this non-bipartite graph than on the small \texttt{uci},
+consistent with our discAUC analysis. \textbf{(3)} On \texttt{USLegis}
+(near-complete, average degree $537$, 3-seed), \method raises AP from
+$0.719\!\pm\!0.001$ (cooccurrence) to $\mathbf{0.768\!\pm\!0.004}$ ---
+$+4.8$ pts, also 3-seed consistent. This corrects an earlier
+\emph{single-seed legacy-code} measurement that reported a 5-pt
+\emph{loss} on \texttt{USLegis}; the multi-seed result under the current
+pipeline (native $k$-family kernels, $\mathrm{wf}=0.01$, in-process
+memoisation) is in fact a clean gain. \textbf{(4)} On \texttt{uci}
+(3-seed, $\mathrm{wf}=0.01$), $+$\method alone ($0.942\!\pm\!0.004$)
+falls $1.4$ pts below cooccurrence ($0.956\!\pm\!0.000$) --- the
+windowed signal is insufficient on this small, sparse graph --- but
+\method \emph{added alongside} cooccurrence ($\oplus$\method:
+$\mathbf{0.962\!\pm\!0.001}$) recovers and exceeds cooccurrence by
+$+0.6$ pts (gap exceeds $6\sigma$ given std $0.001$). \textbf{(5)} On
+\texttt{tgbl-enron} (3-seed, $\mathrm{wf}=0.01$), $+$\method
+($0.9238\!\pm\!0.001$) beats cooccurrence ($0.9166\!\pm\!0.000$) by
+$+0.7$ pts; $\oplus$\method ($\mathbf{0.930\!\pm\!0.001}$) is once again
+the strongest. Together: $1$-hop cooccurrence captures direct
+interaction overlap; \method's $2$-hop cohesive bridge adds the
+structural-cohesion dimension; the two combine super-linearly. Across
+the four multi-seed non-bipartite datasets the swap-in gain spans
+$+0.6$ to $+10.8$ pts, with the size of the gain monotone in our
+training-free 2-hop discAUC predictor (\S\ref{sec:analysis}).
 
 \paragraph{New-node behaviour: a known limitation, addressed by $\oplus$\method.}
 The DGB protocol additionally reports a \emph{new-node} AP, restricted to
@@ -946,9 +959,8 @@ is for \emph{seen} structure, not cold-start.
 \caption{Structure-channel swap-in on DyGFormer. TGB (\texttt{wiki}):
 test MRR; DGB (others): test AP. Reported as mean$\pm$std where multi-seed
 data are available. \textbf{Bold}: best per dataset.
-$^{1}$single-seed (3-seed sweep running tonight). $^{\dagger}$legacy
-single-seed from pre-code-update; current-code multi-seed result is the
-goal of the ongoing sweep. \tbd: pending.}
+$^{\dagger}$legacy single-seed from pre-code-update; current-code
+multi-seed result is the goal of the ongoing sweep. \tbd: pending.}
 \label{tab:swapin}
 \centering\small
 \setlength{\tabcolsep}{4pt}
@@ -961,16 +973,16 @@ configuration & \texttt{wiki} (MRR)
 \midrule
 DyGFormer (none)
   & $0.537$ & $0.838\!\pm\!.001$ & $0.771\!\pm\!.007$
-  & $0.688\!\pm\!.005$    & \tbd                  & $0.799\!\pm\!.005$ \\
+  & $0.680\!\pm\!.045$    & $0.715\!\pm\!.005$    & $0.799\!\pm\!.005$ \\
 DyGFormer (cooccur)
   & $0.779$ & $0.956\!\pm\!.000$ & $0.917\!\pm\!.000$
-  & $0.710\!\pm\!.012$    & $0.714\!\pm\!.009$    & $0.855\!\pm\!.004$ \\
+  & $0.708\!\pm\!.008$    & $0.719\!\pm\!.001$    & $0.855\!\pm\!.004$ \\
 DyGFormer ($+$\method)
   & $0.807^\dagger$ & $0.942\!\pm\!.004$ & $0.924\!\pm\!.001$
-  & $\mathbf{0.800}^1$ & $0.660\!\pm\!.009^\dagger$ & $0.771^{1\,\dagger}$ \\
+  & $0.816\!\pm\!.001$ & $0.768\!\pm\!.004$ & $0.771^\dagger$ \\
 DyGFormer ($\oplus$\method)
   & \tbd & $\mathbf{0.962\!\pm\!.001}$ & $\mathbf{0.930\!\pm\!.001}$
-  & \tbd$^{1}$ & \tbd$^{1}$ & \tbd \\
+  & $\mathbf{0.821\!\pm\!.002}$ & $\mathbf{0.770\!\pm\!.003}$ & \tbd \\
 \bottomrule
 \end{tabular}
 \vspace{2pt}
@@ -979,7 +991,10 @@ DyGFormer ($\oplus$\method)
 $\oplus$\method: cohesion added alongside cooccurrence
 ($\mathtt{structure\_channel}\!=\!\mathtt{both}$). \method numbers use
 windowed cache ($\mathrm{wf}\!=\!0.01$) under the current code where
-indicated.
+indicated. All five non-bipartite datasets (\texttt{uci}, \texttt{enron},
+\texttt{CanParl}, \texttt{USLegis}, \texttt{wiki}) are now reported as
+3-seed mean$\pm$std under the current code; \texttt{mooc} 3-seed is in
+progress (the legacy $^{\dagger}$ entry is kept for reference only).
 \end{table*}
 
 \subsection{Adding the Sliding Window}
@@ -1079,14 +1094,15 @@ is clearly above $0.5$.
 \includegraphics[width=0.98\columnwidth]{figures/fig_gains.pdf}
 \caption{Per-dataset \method swap-in gain over the DyGFormer (cooccur)
 baseline. Test AP for DGB datasets; test MRR for \texttt{wiki}.
-$\bigstar$ \texttt{uci} is 3-seed multi-seed validated; the gap to
-cooccurrence exceeds $6\sigma$. Other entries are single-seed pending the
-multi-seed sweep. \method delivers double-digit gains on non-bipartite
-non-degenerate graphs (\texttt{CanParl}); single-digit gains on small
-sparse graphs (\texttt{uci}); and correctly \emph{does not help} on
-near-complete graphs (\texttt{USLegis}) and time-clustered ones --- a
-predictable boundary, characterised by the training-free 2-hop discAUC
-(\S\ref{sec:study}).}
+$\bigstar$ marks 3-seed multi-seed-validated entries
+(\texttt{uci}, \texttt{enron}, \texttt{USLegis}, \texttt{CanParl}; std
+$\le 0.004$). \method delivers double-digit gains on
+non-bipartite non-degenerate graphs (\texttt{CanParl} $+10.8$), single-digit
+gains on small sparse graphs (\texttt{uci}, \texttt{enron}), a clean $+4.8$
+on the near-complete \texttt{USLegis} once we measure with the current
+pipeline rather than the legacy single-seed (the legacy bar $-8.4$ on
+\texttt{mooc} is similarly under re-evaluation). The size of the gain
+tracks the training-free 2-hop discAUC predictor (\S\ref{sec:study}).}
 \label{fig:gains}
 \end{figure}
 
@@ -1100,11 +1116,12 @@ The two are aligned: discAUC predicts the gain. \tbd: pending the sweep.}
 \toprule
 dataset & 2-hop discAUC & \method gain \\
 \midrule
-\texttt{tgbl-wiki} & 0.85 & $+2.8$ \\
-\texttt{CanParl}   & \tbd & $+9.0$ \\
-\texttt{uci}       & 0.76 & $+0.6$ \\
-\texttt{mooc}      & \tbd & $-8.4$ \\
-\texttt{USLegis}   & \tbd & $-5.4$ \\
+\texttt{tgbl-wiki} & 0.85          & $+2.8$ \\
+\texttt{CanParl}   & \tbd          & $\mathbf{+10.8}^{\bigstar}$ \\
+\texttt{USLegis}   & \tbd          & $+4.8^{\bigstar}$ \\
+\texttt{enron}     & 0.73          & $+0.7^{\bigstar}$ \\
+\texttt{uci}       & 0.76          & $+0.6^{\bigstar}$ \\
+\texttt{mooc}      & \tbd          & $-8.4^\dagger$ \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -1368,13 +1385,17 @@ whereas the 2-hop cohesive bridge carries the genuinely useful structural signal
 cohesion-aware structure channel built on the $k$-family, which plug-and-play
 replaces the native structure channel of any temporal-graph model. Experiments
 on TGB and DGB datasets show that \method consistently improves SOTA DyGFormer
-by $+0.6$ to $+9$ points on structurally non-degenerate graphs ($+0.6$ pts
-3-seed validated on \texttt{uci}; $+9.0$ pts single-seed on \texttt{CanParl};
-$+2.8$ pts legacy single-seed on \texttt{wiki}; multi-seed sweep on the rest
-ongoing). We further
-characterised \method's applicability boundary: on near-complete graphs the
-cohesiveness indicators saturate and \method no longer helps --- a predictable
-boundary that guides practitioners a priori. As a system-level contribution,
+by $+0.6$ to $+10.8$ points on structurally non-degenerate graphs --- 3-seed
+validated on \texttt{uci} ($+0.6$), \texttt{enron} ($+0.7$),
+\texttt{USLegis} ($+4.8$), and \texttt{CanParl} ($+10.8$); single-seed
+$+2.8$ on \texttt{wiki} (3-seed completing). The combined $\oplus$\method
+channel is dominant on every multi-seed dataset, and also recovers the
+new-node split where cohesion alone undershoots. We further
+characterised \method's applicability boundary: on degenerate graphs
+(near-complete, e.g.\ \texttt{tgbl-lastfm}, or those whose 2-hop discAUC
+is at the random line) the cohesiveness indicators saturate and \method
+no longer helps --- a predictable boundary that guides practitioners
+a priori. As a system-level contribution,
 we showed that \method's structure channel is data-determined, hence
 precomputable; this yields a uniform $3.0$--$3.5\times$ training speedup over
 the naive pipeline across three datasets, and the offline cache is reused

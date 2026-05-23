@@ -379,7 +379,15 @@
       "Bash(/home/jding/miniconda3/envs/tgnn/bin/python /tmp/render_heatmap_pdf.py)",
       "Bash(/home/jding/miniconda3/envs/tgnn/bin/tectonic render_gains.tex)",
       "Bash(rm -f r2-*.png)",
-      "Bash(pdftoppm -r 100 /home/jding/CIKM2026frp/paper_ol/main.pdf r2 -png)"
+      "Bash(pdftoppm -r 100 /home/jding/CIKM2026frp/paper_ol/main.pdf r2 -png)",
+      "Bash(/home/jding/miniconda3/envs/tgnn/bin/python)",
+      "Bash(ITGR_PW='ABcd12!$efGH34^' timeout 120 /home/jding/miniconda3/envs/tgnn/bin/python /tmp/itiger_progress.py)",
+      "Bash(ITGR_PW='ABcd12!$efGH34^' timeout 180 /home/jding/miniconda3/envs/tgnn/bin/python /tmp/itiger_insert_mooc.py)",
+      "Bash(ITGR_PW='ABcd12!$efGH34^' timeout 60 /home/jding/miniconda3/envs/tgnn/bin/python /tmp/itiger_uslegis_done.py)",
+      "Bash(ITGR_PW='ABcd12!$efGH34^' timeout 180 /home/jding/miniconda3/envs/tgnn/bin/python /tmp/itiger_gpu_audit.py)",
+      "Bash(ITGR_PW='ABcd12!$efGH34^' timeout 120 /home/jding/miniconda3/envs/tgnn/bin/python /tmp/itiger_fanout_audit.py)",
+      "Bash(ITGR_PW='ABcd12!$efGH34^' timeout 120 /home/jding/miniconda3/envs/tgnn/bin/python /tmp/itiger_fanout_submit.py)",
+      "Bash(ITGR_PW='ABcd12!$efGH34^' bash /tmp/itiger_watch_5jobs.sh)"
     ],
     "additionalDirectories": [
       "/home/jding/CIKM2026frp/gev",
