@@ -447,16 +447,17 @@ dataset & density / type & 1-hop & 2-hop & 2-hop$\times$c \\
 \texttt{tgbl-lastfm}    & degenerate-dense    & 0.50 & 0.53 & 0.52 \\
 \midrule
 \multicolumn{5}{l}{\emph{DGB benchmarks (3-second streaming pass over the CSV)}} \\
-\texttt{mooc}           & bipartite           & 0.09 & \textbf{0.94} & --- \\
-\texttt{reddit}         & bipartite           & 0.43 & \textbf{0.98} & --- \\
-\texttt{CanParl}        & near-complete       & \textbf{0.60} & 0.48 & --- \\
-\texttt{USLegis}        & near-complete       & \textbf{0.63} & 0.56 & --- \\
-\texttt{UNvote}         & degenerate-complete & 0.52 & 0.52 & --- \\
+\texttt{mooc}           & bipartite           & 0.09 & \textbf{0.94} & 0.94 \\
+\texttt{reddit}         & bipartite           & 0.43 & \textbf{0.98} & 0.98 \\
+\texttt{CanParl}        & near-complete       & \textbf{0.60} & 0.48 & 0.48 \\
+\texttt{USLegis}        & near-complete       & \textbf{0.63} & 0.56 & 0.56 \\
+\texttt{UNvote}         & degenerate-complete & 0.52 & 0.52 & 0.52 \\
 \bottomrule
 \end{tabular}
 \\[2pt]
 {\footnotesize 1-hop = common neighbour; 2-hop = cohesive bridge;
-2-hop$\times$c = core-weighted (TGB only).
+2-hop$\times$c = core-weighted bridge (the $k$-core weighting moves
+the discAUC by at most $0.01$ on every dataset, validating Finding~2).
 The DGB rows expose two regimes that the TGB sweep alone does not show:
 (i) bipartite (\texttt{mooc}, \texttt{reddit}) where the 1-hop CN is
 structurally near zero and the 2-hop bridge dominates; (ii)
