@@ -66,10 +66,10 @@ cooccurrence channel by $+0.6$ to $+10.8$ points across six
 multi-seed-validated datasets (\texttt{uci}, \texttt{enron},
 \texttt{USLegis}, \texttt{CanParl}, \texttt{reddit}, \texttt{mooc};
 \texttt{wiki} legacy single-seed). On the bipartite recommendation
-benchmark \texttt{tgbl-subreddit} a single-pass struct-only ablation
-shows \method nearly tripling the baseline test MRR
-($0.10 \to 0.30$, $+19.1$ points), demonstrating large-graph
-effectiveness; the streaming pipeline scales to the 67M-edge
+benchmark \texttt{tgbl-subreddit}, a 3-seed single-pass struct-only
+ablation shows \method nearly doubling the baseline test MRR
+($0.103\!\pm\!0.003 \to 0.204\!\pm\!0.005$, $+10.1$ points across all
+three seeds), demonstrating large-graph effectiveness; the streaming pipeline scales to the 67M-edge
 \texttt{tgbl-flight} in five minutes per pass. We further
 characterise \emph{when} it helps: the gain tracks a graph's
 training-free 2-hop discAUC and vanishes on degenerate or saturated
@@ -1092,13 +1092,16 @@ test-MRR points.}
 \toprule
 dataset & edges & baseline & with \method & gain \\
 \midrule
-\texttt{tgbl-subreddit} & 672K   & 0.104 & $\mathbf{0.295}$ & $\mathbf{+19.1}$ \\
-\texttt{tgbl-review}    & $\sim$30M & 0.282 & 0.275            & $-0.7$ \\
-\texttt{tgbl-coin}      & 22M    & 0.535 & --- (cap)          & --- \\
-\texttt{tgbl-flight}    & 67M    & 0.517 & --- (cap)          & --- \\
-\texttt{tgbl-lastfm}    & 1.3M   & 0.008 & 0.007            & $\approx 0$ \\
+\texttt{tgbl-subreddit} & 672K   & $0.103\!\pm\!.003$ & $\mathbf{0.204\!\pm\!.005}$ & $\mathbf{+10.1}^\bigstar$ \\
+\texttt{tgbl-review}    & $\sim$30M & $0.283\!\pm\!.002$ & $0.275^{\,1}$        & $-0.8$ \\
+\texttt{tgbl-coin}      & 22M    & $0.535$            & --- (cap)               & --- \\
+\texttt{tgbl-flight}    & 67M    & $0.517$            & --- (cap)               & --- \\
+\texttt{tgbl-lastfm}    & 1.3M   & $0.008$            & $0.007$                 & $\approx 0$ \\
 \bottomrule
 \end{tabular}
+\\[2pt]
+{\footnotesize $^{\bigstar}$3-seed mean$\pm$std; $^{1}$single-seed (3-seed
+pwcoh sweep in flight at submission).}
 \\[2pt]
 {\footnotesize ``with \method'' on \texttt{tgbl-coin} and
 \texttt{tgbl-flight} exceeds the 1\,h pairwise-computation budget on a
@@ -1111,10 +1114,11 @@ The table makes four points. \textbf{(1)} \method's single-pass
 \textbf{67M edges} (\texttt{tgbl-flight} runs in 5\,minutes); the
 $k$-family and cohesion-aware feature extraction are not the
 bottleneck. \textbf{(2)} On \texttt{tgbl-subreddit} (672K, bipartite
-recommendation), \method delivers a \textbf{$+19.1$ test-MRR
-improvement} ($0.104 \to 0.295$), almost tripling the struct-only
-baseline. This is the largest single-dataset effectiveness gain in our
-entire experimental sweep. \textbf{(3)} On the degenerate
+recommendation), \method delivers a \textbf{$+10.1$ test-MRR
+improvement} ($0.103\!\pm\!.003 \to 0.204\!\pm\!.005$, 3-seed),
+nearly doubling the struct-only baseline. This is the largest
+single-dataset effectiveness gain we measure on a graph with $>\!100$K
+edges. \textbf{(3)} On the degenerate
 \texttt{tgbl-lastfm} (near-complete with $\mathrm{discAUC}\!=\!0.53$,
 Table~\ref{tab:discauc}), \method's gain is $\approx 0$, exactly as the
 discAUC predictor said it should be --- this is negative-result
