@@ -156,7 +156,7 @@ both cheap to read and far more discriminative.
 
 \begin{figure}[t]
 \centering
-\input{figures/fig_running}
+\includegraphics[width=0.98\columnwidth]{figures/fig_running.pdf}
 \caption{Running example (used throughout the paper). In a corporate email
 network, \emph{Alice} ($u$) and \emph{Bob} ($v$) have never emailed each
 other, so the 1-hop common-neighbour count is $\mathrm{CN}=0$; a
@@ -472,7 +472,7 @@ no better than random ($0.50$); 2-hop bridges reach discAUC $0.73$--$0.96$.}
 
 \begin{figure*}[t]
 \centering
-\includegraphics[width=0.86\textwidth]{figures/fig_discauc_heatmap.png}
+\includegraphics[width=0.86\textwidth]{figures/fig_discauc_heatmap.pdf}
 \caption{Full single-feature discriminability sweep: $21$ candidate
 features (rows) $\times$ $6$ datasets (columns). The bottom block
 (\texttt{cn}, \texttt{aa}, \texttt{jaccard}, \texttt{cn\_x\_sum},
@@ -581,7 +581,7 @@ link score.
 
 \begin{figure*}[t]
 \centering
-\input{figures/fig_arch}
+\includegraphics[width=0.96\textwidth]{figures/fig_arch.pdf}
 \caption{\method per-batch timing, threaded with the Alice/Bob running
 example. Gray boxes are CPU work (Cohesion Cache + slot-feature
 extraction), blue boxes are GPU work (Cohesion Slot Encoder + unchanged
@@ -1076,49 +1076,7 @@ is clearly above $0.5$.
 
 \begin{figure}[t]
 \centering
-\begin{tikzpicture}[every node/.style={font=\footnotesize},x=0.4cm,y=0.7cm]
-  % grid + axis
-  \foreach \x in {-8,-4,0,4,8}{%
-    \draw[gray!25,very thin] (\x,0.4) -- (\x,-5.0);%
-    \node[gray!55] at (\x,0.65) {\tiny $\x$};}
-  \draw[gray!60, line width=0.6pt] (0,0.4) -- (0,-5.0);
-  \node[anchor=south] at (0,0.85) {\small \method swap-in gain over cooccur (pts)};
-
-  % bars: each row -- (y, gain, color, label, note)
-  % CanParl +9.0 (current code, single seed)
-  \fill[teal!75]  (0,-0.15) rectangle (9.0,-0.65);
-  \node[anchor=west,white] at (0.2,-0.4) {\textbf{+9.0}};
-  \node[anchor=east] at (-0.3,-0.4) {\texttt{CanParl}};
-  \node[anchor=west,gray!60] at (9.2,-0.4) {\scriptsize\ (current code, 1 seed)};
-
-  % wiki +2.8 (legacy)
-  \fill[teal!55]  (0,-1.05) rectangle (2.8,-1.55);
-  \node[anchor=west] at (3.0,-1.3) {\textbf{+2.8}};
-  \node[anchor=east] at (-0.3,-1.3) {\texttt{wiki}};
-  \node[anchor=west,gray!60] at (4.2,-1.3) {\scriptsize\ (legacy, 1 seed)};
-
-  % uci +0.6 (3-seed, multi-seed verified)
-  \fill[teal!95]  (0,-1.95) rectangle (0.6,-2.45);
-  \node[anchor=west] at (0.8,-2.2) {\textbf{+0.6}};
-  \node[anchor=east] at (-0.3,-2.2) {\texttt{uci}$^{\bigstar}$};
-  \node[anchor=west,gray!60] at (2.5,-2.2) {\scriptsize\ (3-seed, std$\le$0.001, $\!>\!6\sigma$)};
-
-  % USLegis -5.4 (boundary)
-  \fill[orange!75]  (-5.4,-2.85) rectangle (0,-3.35);
-  \node[anchor=east] at (-5.6,-3.1) {\textbf{$-5.4$}};
-  \node[anchor=west] at (0.3,-3.1) {\texttt{USLegis} (near-complete)};
-
-  % mooc -8.4 (legacy)
-  \fill[orange!55]  (-8.4,-3.75) rectangle (0,-4.25);
-  \node[anchor=east] at (-8.6,-4.0) {\textbf{$-8.4$}};
-  \node[anchor=west] at (0.3,-4.0) {\texttt{mooc} (legacy, 1 seed)};
-
-  % legend
-  \fill[teal!75] (-9.5,-4.85) rectangle (-8.7,-4.65);
-  \node[anchor=west] at (-8.5,-4.75) {\scriptsize gain on non-degenerate};
-  \fill[orange!75] (-4.5,-4.85) rectangle (-3.7,-4.65);
-  \node[anchor=west] at (-3.5,-4.75) {\scriptsize loss on boundary};
-\end{tikzpicture}
+\includegraphics[width=0.98\columnwidth]{figures/fig_gains.pdf}
 \caption{Per-dataset \method swap-in gain over the DyGFormer (cooccur)
 baseline. Test AP for DGB datasets; test MRR for \texttt{wiki}.
 $\bigstar$ \texttt{uci} is 3-seed multi-seed validated; the gap to
