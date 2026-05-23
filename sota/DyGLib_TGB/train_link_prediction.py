@@ -62,9 +62,10 @@ if __name__ == "__main__":
 
     for run in range(args.num_runs):
 
-        set_random_seed(seed=run)
+        _seed = run + getattr(args, 'seed_offset', 0)
+        set_random_seed(seed=_seed)
 
-        args.seed = run
+        args.seed = _seed
         # unique save name: structure_channel + window fraction + slot backend,
         # so concurrent gev variants (cumulative / windowed) don't share a folder
         _struct = getattr(args, 'structure_channel', 'cooccur')
@@ -128,7 +129,7 @@ if __name__ == "__main__":
             # GEV cohesion cache (built once per run, advanced sequentially over the stream)
             gev_cache = None
             if getattr(args, 'structure_channel', 'cooccur') in ('gev', 'both'):
-                _GEV_ROOT = "."
+                _GEV_ROOT = "/home/jding/CIKM2026frp"
                 if _GEV_ROOT not in sys.path:
                     sys.path.insert(0, _GEV_ROOT)
                 from gev.cache import CohesionCache  # noqa: E402
@@ -145,7 +146,7 @@ if __name__ == "__main__":
                     stat_groups=('current',),
                     pairwise_mode='cohesion',
                     window_abs=_gev_window_abs,
-                    use_csr=False,
+                    use_csr=(_sb == 'full'),
                     device=None,
                 )
             dynamic_backbone = DyGFormer(node_raw_features=node_raw_features, edge_raw_features=edge_raw_features, neighbor_sampler=train_neighbor_sampler,
@@ -153,7 +154,7 @@ if __name__ == "__main__":
                                          patch_size=args.patch_size, num_layers=args.num_layers, num_heads=args.num_heads, dropout=args.dropout,
                                          max_input_sequence_length=args.max_input_sequence_length, device=args.device,
                                          structure_channel=getattr(args, 'structure_channel', 'cooccur'),
-                                         cohesion_cache=gev_cache)
+                                         cohesion_cache=gev_cache, slot_backend=_sb)
         else:
             raise ValueError(f"Wrong value for model_name {args.model_name}!")
         link_predictor = MergeLayer(input_dim1=args.output_dim, input_dim2=args.output_dim, hidden_dim=args.output_dim, output_dim=1)

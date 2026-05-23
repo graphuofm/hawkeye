@@ -1,0 +1,94 @@
+<mxfile host="local" modified="2026-05-23T05:30:00.000Z" version="22.0.0">
+  <diagram name="Fig1-RunningExample" id="fig1-running">
+    <mxGraphModel dx="1500" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="900" pageHeight="650" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <!-- ===== NODES ===== -->
+        <!-- Hank: Alice's extra non-bridge contact -->
+        <mxCell id="hank" value="Hank" style="ellipse;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;fontFamily=Times New Roman;fontColor=#888888;fontSize=11" vertex="1" parent="1">
+          <mxGeometry x="60" y="80" width="50" height="50" as="geometry"/>
+        </mxCell>
+
+        <!-- Alice (u): query node, blue -->
+        <mxCell id="alice" value="&lt;b&gt;u&lt;/b&gt;&#10;Alice" style="ellipse;whiteSpace=wrap;html=1;fillColor=#7E92D8;strokeColor=#000000;fontColor=#FFFFFF;fontFamily=Times New Roman;fontStyle=1;fontSize=14;align=center;verticalAlign=middle" vertex="1" parent="1">
+          <mxGeometry x="220" y="220" width="80" height="80" as="geometry"/>
+        </mxCell>
+
+        <!-- Carol: high-cohesion (upper bridge stepping stone) -->
+        <mxCell id="carol" value="Carol&#10;c=5, τ=4" style="ellipse;whiteSpace=wrap;html=1;fillColor=#D5D5D5;strokeColor=#000000;fontFamily=Times New Roman;fontSize=11;align=center" vertex="1" parent="1">
+          <mxGeometry x="360" y="40" width="70" height="70" as="geometry"/>
+        </mxCell>
+
+        <!-- Dan: high-cohesion bridge end (counted in bridge_c) -->
+        <mxCell id="dan" value="Dan&#10;c=5, τ=4" style="ellipse;whiteSpace=wrap;html=1;fillColor=#D5D5D5;strokeColor=#000000;fontFamily=Times New Roman;fontSize=11;align=center" vertex="1" parent="1">
+          <mxGeometry x="640" y="110" width="70" height="70" as="geometry"/>
+        </mxCell>
+
+        <!-- Eve: ordinary (lower bridge stepping stone) -->
+        <mxCell id="eve" value="Eve&#10;c=2, τ=2" style="ellipse;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;fontFamily=Times New Roman;fontSize=11;align=center" vertex="1" parent="1">
+          <mxGeometry x="320" y="420" width="60" height="60" as="geometry"/>
+        </mxCell>
+
+        <!-- Grace: ordinary bridge end (counted in bridge_c) -->
+        <mxCell id="grace" value="Grace&#10;c=4, τ=3" style="ellipse;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;fontFamily=Times New Roman;fontSize=11;align=center" vertex="1" parent="1">
+          <mxGeometry x="560" y="480" width="60" height="60" as="geometry"/>
+        </mxCell>
+
+        <!-- Bob (v): query node, teal -->
+        <mxCell id="bob" value="&lt;b&gt;v&lt;/b&gt;&#10;Bob" style="ellipse;whiteSpace=wrap;html=1;fillColor=#4D8B8B;strokeColor=#000000;fontColor=#FFFFFF;fontFamily=Times New Roman;fontStyle=1;fontSize=14;align=center" vertex="1" parent="1">
+          <mxGeometry x="780" y="300" width="80" height="80" as="geometry"/>
+        </mxCell>
+
+        <!-- "?" marker (orange, between the two bridges) -->
+        <mxCell id="qmark" value="?" style="text;html=1;fontSize=28;fontStyle=1;fontColor=#D8782B;align=center;fontFamily=Times New Roman" vertex="1" parent="1">
+          <mxGeometry x="500" y="290" width="40" height="40" as="geometry"/>
+        </mxCell>
+
+        <!-- ===== EDGES ===== -->
+        <!-- Alice's 1-hop edges (solid gray, real) -->
+        <mxCell id="e_a_carol" style="endArrow=none;html=1;strokeColor=#999999;strokeWidth=1" edge="1" source="alice" target="carol" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_a_eve" style="endArrow=none;html=1;strokeColor=#999999;strokeWidth=1" edge="1" source="alice" target="eve" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_a_hank" style="endArrow=none;html=1;strokeColor=#999999;strokeWidth=1" edge="1" source="alice" target="hank" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Bob's 1-hop edges (solid gray, real) -->
+        <mxCell id="e_b_dan" style="endArrow=none;html=1;strokeColor=#999999;strokeWidth=1" edge="1" source="bob" target="dan" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_b_grace" style="endArrow=none;html=1;strokeColor=#999999;strokeWidth=1" edge="1" source="bob" target="grace" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- The two 2-hop cohesive bridges (orange, thick) -->
+        <mxCell id="brg_upper" style="endArrow=none;html=1;strokeColor=#D8782B;strokeWidth=3;curved=1" edge="1" source="carol" target="dan" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points"><mxPoint x="500" y="40"/></Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="brg_lower" style="endArrow=none;html=1;strokeColor=#D8782B;strokeWidth=3;curved=1" edge="1" source="eve" target="grace" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points"><mxPoint x="460" y="530"/></Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Candidate future edge Alice -- Bob (dashed) -->
+        <mxCell id="e_cand" style="endArrow=none;html=1;strokeColor=#999999;strokeWidth=1;dashed=1" edge="1" source="alice" target="bob" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- ===== ANNOTATIONS ===== -->
+        <mxCell id="ann" value="CN(Alice, Bob) = 0,&#10;&lt;span style=&quot;color:#D8782B&quot;&gt;bridge(Alice, Bob) = 2&lt;/span&gt;&#10;&lt;span style=&quot;color:#D8782B&quot;&gt;bridge_c = c(Dan) + c(Grace) = 5 + 4 = 9&lt;/span&gt;" style="text;html=1;fontFamily=Times New Roman;align=center;fontSize=12" vertex="1" parent="1">
+          <mxGeometry x="280" y="580" width="380" height="55" as="geometry"/>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

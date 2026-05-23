@@ -9,8 +9,8 @@ from torch.nn import MultiheadAttention
 from models.modules import TimeEncoder
 from utils.utils import NeighborSampler
 
-# GEV (CohesionCache) lives outside this repo at .
-_GEV_ROOT = "."
+# GEV (CohesionCache) lives outside this repo at /home/jding/CIKM2026frp
+_GEV_ROOT = "/home/jding/CIKM2026frp"
 if _GEV_ROOT not in sys.path:
     sys.path.insert(0, _GEV_ROOT)
 
@@ -539,6 +539,34 @@ class CohesionSlotEncoder(nn.Module):
             nn.ReLU(),
             nn.Linear(in_features=feat_dim, out_features=feat_dim),
         )
+        # Memoise raw slot features. The cohesion cache is deterministic, so the
+        # same (advance state, query) gives identical features across epochs and
+        # seeds. Content-hash key -> a mismatch always recomputes (no stale hit).
+        self._memo = {}
+        self._memo_cap = 8000
+
+    def _slot_raw(self, src_node_ids, dst_node_ids,
+                  src_padded_neighbor_ids, dst_padded_neighbor_ids):
+        memo = self._memo
+        key = None
+        if memo is not None:
+            a = np.asarray(src_node_ids); b = np.asarray(dst_node_ids)
+            c = np.asarray(src_padded_neighbor_ids); d = np.asarray(dst_padded_neighbor_ids)
+            key = (getattr(self.cache, '_advance_count', -1), self.backend,
+                   hash((a.shape, a.tobytes(), b.tobytes(),
+                         c.shape, c.tobytes(), d.tobytes())))
+            hit = memo.get(key)
+            if hit is not None:
+                return hit
+        if self.backend == 'full':
+            src_raw = self.cache.slot_features(src_padded_neighbor_ids, dst_node_ids, device=None)
+            dst_raw = self.cache.slot_features(dst_padded_neighbor_ids, src_node_ids, device=None)
+        else:
+            src_raw = self.cache.slot_features_fast(src_padded_neighbor_ids, dst_node_ids, device=None)
+            dst_raw = self.cache.slot_features_fast(dst_padded_neighbor_ids, src_node_ids, device=None)
+        if memo is not None and key is not None and len(memo) < self._memo_cap:
+            memo[key] = (src_raw, dst_raw)
+        return src_raw, dst_raw
 
     def forward(self,
                 src_node_ids: np.ndarray,
@@ -550,12 +578,8 @@ class CohesionSlotEncoder(nn.Module):
         src_padded_neighbor_ids, ...:      (B, K) ndarray of neighbour ids; pad value = 0
         returns:                           ((B, K_src, feat_dim), (B, K_dst, feat_dim))
         """
-        if self.backend == 'full':
-            src_raw = self.cache.slot_features(src_padded_neighbor_ids, dst_node_ids, device=None)
-            dst_raw = self.cache.slot_features(dst_padded_neighbor_ids, src_node_ids, device=None)
-        else:
-            src_raw = self.cache.slot_features_fast(src_padded_neighbor_ids, dst_node_ids, device=None)
-            dst_raw = self.cache.slot_features_fast(dst_padded_neighbor_ids, src_node_ids, device=None)
+        src_raw, dst_raw = self._slot_raw(src_node_ids, dst_node_ids,
+                                          src_padded_neighbor_ids, dst_padded_neighbor_ids)
         # mask out padded positions (pad id == 0 in DyGLib convention)
         src_pad_mask = torch.from_numpy((src_padded_neighbor_ids == 0).astype('float32')).unsqueeze(-1)
         dst_pad_mask = torch.from_numpy((dst_padded_neighbor_ids == 0).astype('float32')).unsqueeze(-1)

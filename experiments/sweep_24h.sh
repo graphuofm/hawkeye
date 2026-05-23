@@ -5,9 +5,9 @@
 # decomposition (O(m^1.5)) hangs. Degenerate-graph boundary evidence comes from
 # the already-completed USLegis run.
 set -u
-PY=python
+PY=/home/jding/miniconda3/envs/tgnn/bin/python
 cd "$(dirname "$0")/../sota/DyGLib"
-ROOT=.
+ROOT=/home/jding/CIKM2026frp
 mkdir -p "$ROOT/results/logs"
 PROG="$ROOT/results/sweep24h.progress"
 MAXJOBS=${MAXJOBS:-5}

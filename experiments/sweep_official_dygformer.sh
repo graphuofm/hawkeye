@@ -3,8 +3,8 @@
 # 4-way ablation × DyGLib-supported datasets.
 # This is the CORE swap-in experiment for the paper.
 set -u
-PY=python
-ROOT=.
+PY=/home/jding/miniconda3/envs/tgnn/bin/python
+ROOT=/home/jding/CIKM2026frp
 cd "$ROOT/sota/DyGLib_TGB"
 mkdir -p "$ROOT/results/logs"
 

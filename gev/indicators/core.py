@@ -22,75 +22,51 @@ from gev.indicators.base import BaseIndicator
 
 
 class CoreNumberIndicator(BaseIndicator):
-    name = "core"
-    complexity = "O(local)"
-    supports_incremental = True
+    """k-core number. Full O(n+m) recompute via the C++ kernel every
+    ``recompute_every`` inserted edges (falls back to a pure-Python full
+    decomposition if the native kernel is unavailable). Core numbers are exact
+    at each recompute; between recomputes they are held (a documented
+    structural-trace granularity, identical to the truss indicator)."""
 
-    def __init__(self) -> None:
+    name = "core"
+    complexity = "O(n+m) native recompute / recompute_every"
+    supports_incremental = False
+
+    def __init__(self, recompute_every: int = 64) -> None:
         self._core: Dict[int, int] = defaultdict(int)
+        self.recompute_every = max(1, int(recompute_every))
+        self._since = 0
 
     # ------------------------------------------------------------------ #
     def initialize(self, graph: DynamicGraph) -> None:
-        self._core = defaultdict(int)
-        self._core.update(_kcore_full(graph))
+        self._recompute(graph)
+        self._since = 0
 
     def reset(self) -> None:
         self._core = defaultdict(int)
+        self._since = 0
 
     # ------------------------------------------------------------------ #
+    def _recompute(self, graph: DynamicGraph) -> Set[int]:
+        old = self._core
+        c: Dict[int, int] = defaultdict(int)
+        from gev import native
+        if native.available():
+            arr = native.kcore(graph)
+            for nid, k in enumerate(arr):
+                if k:
+                    c[int(nid)] = int(k)
+        else:
+            c.update(_kcore_full(graph))
+        self._core = c
+        return {n for n in set(old) | set(c) if old.get(n, 0) != c.get(n, 0)}
+
     def update(self, graph: DynamicGraph, u: int, v: int, t: float) -> Set[int]:
-        core = self._core
-        cu, cv = core[u], core[v]
-        K = cu if cu <= cv else cv
-        root = u if cu <= cv else v
-
-        # 1) collect candidate set S: BFS from root through nodes of coreness == K
-        S: Set[int] = set()
-        dq = deque([root])
-        S.add(root)
-        adj = graph.adj
-        while dq:
-            w = dq.popleft()
-            for x in adj.get(w, ()):  # type: ignore[arg-type]
-                if x not in S and core[x] == K:
-                    S.add(x)
-                    dq.append(x)
-
-        if not S:
-            return {u, v}
-
-        # 2) effective degree within S (+ neighbours with core > K count as fixed survivors)
-        eff: Dict[int, int] = {}
-        for w in S:
-            d = 0
-            for x in adj.get(w, ()):  # type: ignore[arg-type]
-                cx = core[x]
-                if cx > K or x in S:
-                    d += 1
-            eff[w] = d
-
-        # 3) peel: repeatedly drop nodes with eff <= K
-        alive = set(S)
-        dq = deque(w for w in S if eff[w] <= K)
-        while dq:
-            w = dq.popleft()
-            if w not in alive:
-                continue
-            alive.discard(w)
-            for x in adj.get(w, ()):  # type: ignore[arg-type]
-                if x in alive and core[x] == K:  # x is in S (closure) by construction
-                    eff[x] -= 1
-                    if eff[x] <= K:
-                        dq.append(x)
-
-        # 4) promote survivors
-        for w in alive:
-            core[w] = K + 1
-
-        affected = set(alive)
-        affected.add(u)
-        affected.add(v)
-        return affected
+        self._since += 1
+        if self._since >= self.recompute_every:
+            self._since = 0
+            return self._recompute(graph) | {u, v}
+        return {u, v}
 
     # ------------------------------------------------------------------ #
     def get_value(self, node: int) -> float:

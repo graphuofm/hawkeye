@@ -64,9 +64,10 @@ if __name__ == "__main__":
 
     for run in range(args.num_runs):
 
-        set_random_seed(seed=run)
+        _seed = run + getattr(args, 'seed_offset', 0)
+        set_random_seed(seed=_seed)
 
-        args.seed = run
+        args.seed = _seed
         # unique save name: structure_channel + window fraction + slot backend,
         # so concurrent gev variants (cumulative / windowed) don't share a folder
         _struct = getattr(args, 'structure_channel', 'cooccur')
@@ -128,7 +129,7 @@ if __name__ == "__main__":
             # GEV cohesion cache (built once per run, advanced sequentially over the stream)
             gev_cache = None
             if getattr(args, 'structure_channel', 'cooccur') in ('gev', 'both'):
-                _GEV_ROOT = "."
+                _GEV_ROOT = "/home/jding/CIKM2026frp"
                 if _GEV_ROOT not in sys.path:
                     sys.path.insert(0, _GEV_ROOT)
                 from gev.cache import CohesionCache  # noqa: E402

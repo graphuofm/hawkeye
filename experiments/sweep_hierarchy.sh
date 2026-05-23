@@ -8,7 +8,7 @@
 #   - static vs dynamic node features (on core)
 # Runs sequentially on one GPU; per-run JSON appended to results/sweep_hierarchy.jsonl.
 set -u
-PY=python
+PY=/home/jding/miniconda3/envs/tgnn/bin/python
 cd "$(dirname "$0")/.."
 mkdir -p results/logs
 OUT=results/sweep_hierarchy.jsonl

@@ -3,7 +3,7 @@
 # 4-way × 5 datasets = 20 runs. uci/enron saturate the cooccur trick;
 # wiki/subreddit/review/mooc/lastfm are the discriminative datasets.
 set -u
-PY=python
+PY=/home/jding/miniconda3/envs/tgnn/bin/python
 cd "$(dirname "$0")/.."
 mkdir -p results/logs
 EPOCHS=${EPOCHS:-15}; PATIENCE=${PATIENCE:-5}; SEED=${SEED:-0}; VAL_SUB=${VAL_SUB:-2000}

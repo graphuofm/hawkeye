@@ -21,7 +21,7 @@ import re
 import subprocess
 import time
 
-ROOT = "."
+ROOT = "/home/jding/CIKM2026frp"
 LOG_DIR = os.path.join(ROOT, "results", "logs")
 REFRESH = 60          # seconds between refreshes
 STUCK_MIN = 20        # minutes of no log write => STUCK

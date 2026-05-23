@@ -2,7 +2,7 @@
 # More TGN-vs-TGN+GEV runs: the missing datasets (subreddit/enron/lastfm) with the
 # key couplings, and multi-seed on uci/wiki.
 set -u
-PY=python
+PY=/home/jding/miniconda3/envs/tgnn/bin/python
 cd "$(dirname "$0")/.."
 mkdir -p results/logs
 TREND="0.99,0.999,0.9999"; OUT=results/tgn_matrix.jsonl

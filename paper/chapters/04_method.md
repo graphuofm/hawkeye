@@ -186,7 +186,10 @@ Three takeaways:
 - **Light memory.** The Cohesion Cache stores adjacency + $k$-family values on
   CPU; for tgbl-wiki (9K nodes, 157K edges) this is $\sim\!10$–$20$ MB.
 
-The total extra training time is well under $10\%$ of the backbone.
+Empirically measured per-epoch overhead is reported in §5.7 (Table — uci
+3-seed mean): the structure-channel sparse mat-vec dominates and gives
+**+79%** overhead for the replacement variant and **+154%** for the additive
+variant. The precomputation strategy (§5.7) reduces this overhead by ~3×.
 
 ---
 
@@ -203,6 +206,11 @@ The total extra training time is well under $10\%$ of the backbone.
 In one sentence: Hawkeye upgrades the structure channel from a *1-bit
 cooccurrence flag* to a *cohesion-aware continuous feature vector*, while
 remaining plug-and-play and low-overhead.
+
+> **Note on the CPU-side design.** Because all structural work is CPU-side
+> and a function of the edge stream alone (independent of model weights and
+> seed), it admits **offline precomputation**; §5.7 reports a uniform
+> **3.0–3.5× training speedup** from this design.
 
 ---
 ---

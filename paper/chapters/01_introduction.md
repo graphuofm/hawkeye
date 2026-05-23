@@ -123,9 +123,20 @@ structural-diversity measure.
    structural diversity; on dense graphs whose cohesiveness indicators are
    saturated it should fall back. This predictable boundary gives practitioners
    a priori guidance.
-4. **Experimental validation** on $N$ TGB + DGB datasets: $+2.8$–$4$ points over
-   the SOTA on non-degenerate graphs, with honest negative results on degenerate
-   graphs. <!-- N filled after the sweep -->
+4. **Experimental validation** on TGB + DGB datasets: **+0.6 to +9 points** over
+   the SOTA on non-degenerate graphs (+0.6 pts 3-seed validated on `uci`; +9.0
+   pts single-seed on `CanParl`; +2.8 pts legacy single-seed on `wiki`;
+   multi-seed sweep on the remaining datasets is ongoing), with honest
+   negative results on degenerate graphs (−5.4 pts on `USLegis`).
+5. **A system-level contribution: efficient CPU–GPU pipeline.** Because the
+   structure channel is *data-determined* (a function of the edge stream alone,
+   independent of model weights and seed), it can be precomputed once and
+   reused throughout training, across seeds, and across hyperparameter sweeps.
+   We benchmark five CPU–GPU integration strategies on three datasets (uci,
+   mooc, reddit) and find that precomputation yields a uniform
+   **3.0–3.5× training speedup** across dataset sizes, where overlap-based
+   strategies (pinned memory, prefetching) give only marginal and
+   dataset-dependent gains.
 
 ---
 

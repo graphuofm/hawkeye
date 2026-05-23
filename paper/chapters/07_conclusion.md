@@ -15,11 +15,18 @@ finding, we proposed **Hawkeye**, an incrementally maintained, cohesion-aware
 structure channel built on the $k$-family of structural-cohesiveness indicators,
 which plug-and-play replaces the native structure channel of any temporal-graph
 model. Experiments on $N$ TGB and DGB datasets show that Hawkeye consistently
-improves the state-of-the-art DyGFormer by $+2.8$–$4$ points on structurally
-non-degenerate graphs. We further characterised Hawkeye's applicability
+improves the state-of-the-art DyGFormer by $+0.6$ to $+9$ points on
+structurally non-degenerate graphs ($+0.6$ pts 3-seed validated on `uci`;
+$+9.0$ pts single-seed on `CanParl`; $+2.8$ pts legacy single-seed on `wiki`;
+multi-seed sweep on remaining datasets ongoing). We further characterised Hawkeye's applicability
 boundary: on near-complete graphs the cohesiveness indicators saturate and
 Hawkeye no longer adds discriminative power — a predictable boundary that gives
-practitioners an a-priori basis for deciding whether to use it. We release
+practitioners an a-priori basis for deciding whether to use it. As a
+system-level contribution, we further showed that the structure channel is
+**data-determined** (independent of model weights and seed), and therefore
+**precomputable**; this design yields a uniform **3.0–3.5× training speedup**
+over the naive pipeline across three datasets, and the offline structural
+cache is reused across seeds and hyperparameter sweeps. We release
 Hawkeye as an open-source toolkit. Future directions include extending Hawkeye
 to heterogeneous temporal graphs, exploring more efficient $k$-truss
 approximations to cover larger graphs, and studying adaptive fusion mechanisms

@@ -8,7 +8,7 @@
 #
 # Runs sequentially. ~10-12 h wall on a Quadro RTX 6000.
 set -u
-PY=python
+PY=/home/jding/miniconda3/envs/tgnn/bin/python
 cd "$(dirname "$0")/.."
 mkdir -p results/logs
 

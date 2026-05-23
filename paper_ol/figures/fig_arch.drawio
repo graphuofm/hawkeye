@@ -1,0 +1,78 @@
+<mxfile host="local" modified="2026-05-23T05:30:00.000Z" version="22.0.0">
+  <diagram name="Fig3-Architecture" id="fig3-arch">
+    <mxGraphModel dx="2400" dy="1000" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1500" pageHeight="700" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <!-- ===== TOP ROW (CPU lane): INPUT → P1 → P2 → P3 → P4 ===== -->
+        <mxCell id="inp" value="&lt;b&gt;INPUT&lt;/b&gt;&#10;&lt;i&gt;edge query&lt;/i&gt;&#10;(Alice, Bob, t)" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#FBE4C8;strokeColor=#B7791F;strokeWidth=2;fontFamily=Times New Roman;fontSize=12;align=center" vertex="1" parent="1">
+          <mxGeometry x="40" y="40" width="160" height="100" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="p1" value="&lt;b&gt;P1. Window prune.&lt;/b&gt;&#10;Drop edges &lt; t − wf·ΔT;&#10;reinit c(·), τ(·)." style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#EDEDED;strokeColor=#666666;fontFamily=Times New Roman;fontSize=11" vertex="1" parent="1">
+          <mxGeometry x="240" y="40" width="180" height="100" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="p2" value="&lt;b&gt;P2. CSR snapshot.&lt;/b&gt;&#10;Build sparse A of G(&lt;t)&#10;(lazy, cached)." style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#EDEDED;strokeColor=#666666;fontFamily=Times New Roman;fontSize=11" vertex="1" parent="1">
+          <mxGeometry x="460" y="40" width="180" height="100" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="p3" value="&lt;b&gt;P3. Sample histories.&lt;/b&gt;&#10;Alice: {Carol, Eve, ...}&#10;Bob: {Dan, Grace, ...}" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#EDEDED;strokeColor=#666666;fontFamily=Times New Roman;fontSize=11" vertex="1" parent="1">
+          <mxGeometry x="680" y="40" width="220" height="100" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="p4" value="&lt;b&gt;P4. Slot features.&lt;/b&gt;&#10;bridge(A, B) = 2;&#10;bridge_c = c(Dan) + c(Grace) = 9" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#EDEDED;strokeColor=#666666;fontFamily=Times New Roman;fontSize=11" vertex="1" parent="1">
+          <mxGeometry x="940" y="40" width="260" height="100" as="geometry"/>
+        </mxCell>
+
+        <!-- ===== RIGHT COLUMN: P5 ===== -->
+        <mxCell id="p5" value="&lt;b&gt;P5. Memoise.&lt;/b&gt;&#10;Hash (#adv, slot inputs);&#10;reuse across epochs." style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#EDEDED;strokeColor=#666666;fontFamily=Times New Roman;fontSize=11" vertex="1" parent="1">
+          <mxGeometry x="940" y="200" width="260" height="100" as="geometry"/>
+        </mxCell>
+
+        <!-- ===== BOTTOM ROW (returns LEFT): GPU → OUTPUT → P8 ===== -->
+        <mxCell id="gpu" value="&lt;b&gt;P6 + P7 — GPU.&lt;/b&gt;&#10;Slot encoder MLP 23→50;&#10;&lt;b&gt;DyGFormer Transformer&lt;/b&gt; (4 ch: node + edge + time + &lt;b&gt;cohesion&lt;/b&gt;);&#10;BCE loss vs. negatives + Adam step." style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#DBE3F3;strokeColor=#5276A8;fontFamily=Times New Roman;fontSize=11" vertex="1" parent="1">
+          <mxGeometry x="740" y="380" width="320" height="140" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="out" value="&lt;b&gt;OUTPUT&lt;/b&gt;&#10;score&#10;s(Alice, Bob, t)&#10;(rank in TGB negatives)" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#FBE4C8;strokeColor=#B7791F;strokeWidth=2;fontFamily=Times New Roman;fontSize=12;align=center" vertex="1" parent="1">
+          <mxGeometry x="400" y="380" width="200" height="140" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="p8" value="&lt;b&gt;P8. Advance cache.&lt;/b&gt;&#10;Add (Alice, Bob, t);&#10;update deg, c, τ (native C++)." style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#CFCFCF;strokeColor=#666666;fontFamily=Times New Roman;fontSize=11" vertex="1" parent="1">
+          <mxGeometry x="40" y="380" width="260" height="140" as="geometry"/>
+        </mxCell>
+
+        <!-- ===== ARROWS ===== -->
+        <!-- Top row: left to right -->
+        <mxCell id="a1" style="endArrow=open;html=1;strokeColor=#666666;exitX=1;exitY=0.5;entryX=0;entryY=0.5" edge="1" source="inp" target="p1" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="a2" style="endArrow=open;html=1;strokeColor=#666666;exitX=1;exitY=0.5;entryX=0;entryY=0.5" edge="1" source="p1" target="p2" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="a3" style="endArrow=open;html=1;strokeColor=#666666;exitX=1;exitY=0.5;entryX=0;entryY=0.5" edge="1" source="p2" target="p3" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="a4" style="endArrow=open;html=1;strokeColor=#666666;exitX=1;exitY=0.5;entryX=0;entryY=0.5" edge="1" source="p3" target="p4" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <!-- Right column: P4 → P5 (down) -->
+        <mxCell id="a5" style="endArrow=open;html=1;strokeColor=#666666;exitX=0.5;exitY=1;entryX=0.5;entryY=0" edge="1" source="p4" target="p5" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <!-- P5 → GPU (down + left, with handoff label) -->
+        <mxCell id="a6" value="slot tensor → GPU" style="endArrow=open;html=1;strokeColor=#666666;fontFamily=Times New Roman;fontSize=10;exitX=0.5;exitY=1;entryX=1;entryY=0.5;edgeStyle=orthogonalEdgeStyle" edge="1" source="p5" target="gpu" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Bottom row: GPU → OUTPUT (left) -->
+        <mxCell id="a7" style="endArrow=open;html=1;strokeColor=#666666;exitX=0;exitY=0.5;entryX=1;entryY=0.5" edge="1" source="gpu" target="out" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <!-- predict-then-advance (orange, OUTPUT → P8) -->
+        <mxCell id="a8" value="&lt;b&gt;predict-then-advance&lt;/b&gt;" style="endArrow=open;html=1;strokeColor=#D8782B;strokeWidth=2;fontColor=#D8782B;fontFamily=Times New Roman;fontSize=11;exitX=0;exitY=0.5;entryX=1;entryY=0.5" edge="1" source="out" target="p8" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Left column: P8 → INPUT (up, next batch loopback) -->
+        <mxCell id="a9" value="next batch" style="endArrow=open;html=1;strokeColor=#666666;fontFamily=Times New Roman;fontSize=10;exitX=0.5;exitY=0;entryX=0.5;entryY=1" edge="1" source="p8" target="inp" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

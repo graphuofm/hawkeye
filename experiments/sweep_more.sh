@@ -2,7 +2,7 @@
 # Extra runs to fill gaps while the main batches run: multi-seed key struct-only
 # configs (pressure-test noise) + flight degree-only single-pass (scalability).
 set -u
-PY=python
+PY=/home/jding/miniconda3/envs/tgnn/bin/python
 cd "$(dirname "$0")/.."
 mkdir -p results/logs
 TREND="0.99,0.999,0.9999"; OUT=results/more_matrix.jsonl

@@ -4,8 +4,8 @@
 # Covers: uci gev-variants (window ablation), mooc 4-rung, reddit 2-rung,
 # wiki window ablation. cooccur/none/both non-colliding runs are untouched.
 set -u
-PY=python
-ROOT=.
+PY=/home/jding/miniconda3/envs/tgnn/bin/python
+ROOT=/home/jding/CIKM2026frp
 PROG="$ROOT/results/sweep_fix.progress"
 MAXJOBS=${MAXJOBS:-9}
 

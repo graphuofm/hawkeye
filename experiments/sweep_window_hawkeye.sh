@@ -3,8 +3,8 @@
 # vs cumulative. Run on a fast non-degenerate dataset (uci) and the headline
 # dataset (wiki). The cohesion cache prunes edges older than wf*(t_max-t_min).
 set -u
-PY=python
-ROOT=.
+PY=/home/jding/miniconda3/envs/tgnn/bin/python
+ROOT=/home/jding/CIKM2026frp
 PROG="$ROOT/results/window_hawkeye.progress"
 MAXJOBS=${MAXJOBS:-10}
 

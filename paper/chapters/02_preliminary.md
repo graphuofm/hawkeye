@@ -41,9 +41,29 @@ reported as the **mean reciprocal rank (MRR)**; on the DGB datasets
 
 ## 2.2 The $k$-family of Structural-Cohesiveness Indicators
 
-Hawkeye measures how *densely embedded* a node is using the classical
-$k$-family of graph-cohesiveness decompositions. These indicators form a
-hierarchy of **progressively tighter constraints**.
+We use "**$k$-family**" as a working shorthand — it is **not a standard
+named class** in the literature — for a hierarchy of node-level
+structural-cohesiveness indicators that impose increasingly strict local
+constraints:
+
+$$
+\underbrace{\text{degree}}_{\text{loosest}}
+\;\to\;
+k\text{-core}
+\;\to\;
+k\text{-truss}
+\;\to\;
+\underbrace{(k\text{-clique})}_{\text{tightest, limit}}
+$$
+
+Each next member asks a stricter question about how densely a node is
+embedded in its neighbourhood. **Degree** $d(v)=|\mathcal{N}(v)|$ asks "do
+you connect to anything?". **$k$-clique** (a fully connected subset of $k$
+nodes) is the strictest limit: every pair of $k$ neighbours must be
+adjacent. We use the two in between — $k$-core and $k$-truss — because they
+admit fast streaming algorithms (Algorithms A1, A2 below), unlike $k$-clique
+which is NP-hard for large $k$. The two intermediate indicators are
+formalised below.
 
 **Definition 3 ($k$-core).**
 A subgraph $H\subseteq\mathcal{G}(t)$ is a $k$-core iff every node in $H$ has
@@ -94,7 +114,46 @@ In plain terms, the three indicators answer increasingly strict questions:
 |---|---|
 | degree | "do you have neighbours?" |
 | $k$-core | "do your neighbours also have enough neighbours?" |
-| $k$-truss | "do your neighbours also know each other?" |
+| $k$-truss | "do your neighbours also know each other (closed triangles)?" |
+| $k$-clique (limit) | "do *every pair* of your $k$ neighbours know each other?" |
+
+### Algorithm A1: $k$-core decomposition (minimal form, $O(m)$)
+
+```
+input:  simple graph G = (V, E)
+output: core number c(v) for every v ∈ V
+
+  d(v) ← deg_G(v)  for all v ∈ V
+  bin-sort V by d(·) ascending  (O(n+m))
+  while V is non-empty:
+    v ← vertex with smallest current d(v)
+    c(v) ← d(v)
+    for each neighbour u of v still in V:
+      if d(u) > d(v):  d(u) ← d(u) − 1;  re-bucket u
+    remove v from V
+```
+*Reference: Batagelj & Zaveršnik [batagelj2003cores].*
+
+### Algorithm A2: $k$-truss decomposition (support peeling, $O(m^{1.5})$)
+
+```
+input:  simple graph G = (V, E)
+output: trussness τ(e) for every edge e ∈ E
+        τ(v) = max over edges incident to v
+
+  s(e) ← |N(u) ∩ N(v)|  for every edge e = (u,v)     # triangle support
+  k ← 2
+  while E is non-empty:
+    while ∃ e ∈ E with s(e) ≤ k − 2:
+      τ(e) ← k;  remove e from E
+      for each triangle (e, e1, e2) still alive:
+        s(e1) ← s(e1) − 1;  s(e2) ← s(e2) − 1
+    k ← k + 1
+```
+*Reference: Wang & Cheng [wang2012truss].*
+
+These are the two algorithms Hawkeye uses to compute its structural
+features; we maintain them incrementally for a streaming graph (§4.4).
 
 ---
 

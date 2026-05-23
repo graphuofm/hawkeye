@@ -2,7 +2,7 @@
 # Sliding-window graph vs cumulative graph: drop edges older than `window_fraction`
 # of the dataset time span. Struct-only, degree+core, pw=cohesion.
 set -u
-PY=python
+PY=/home/jding/miniconda3/envs/tgnn/bin/python
 cd "$(dirname "$0")/.."
 mkdir -p results/logs
 EPOCHS=${EPOCHS:-15}; PATIENCE=${PATIENCE:-5}; SEED=${SEED:-0}; VAL_SUB=${VAL_SUB:-2000}

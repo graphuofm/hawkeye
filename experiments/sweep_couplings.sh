@@ -3,7 +3,7 @@
 # TGN baseline + struct_only + 6 late/modulation couplings + aux, on a couple datasets.
 # Results -> results/coupling_matrix.jsonl ; logs -> results/logs/couple_*.log
 set -u
-PY=python
+PY=/home/jding/miniconda3/envs/tgnn/bin/python
 cd "$(dirname "$0")/.."
 mkdir -p results/logs
 EPOCHS="${EPOCHS:-15}"; PATIENCE="${PATIENCE:-5}"; SEED="${SEED:-0}"; VAL_SUB="${VAL_SUB:-2000}"

@@ -44,7 +44,7 @@ docs/                       project plan & design notes
 Uses the existing conda env **`tgnn`** (Python 3.9, CUDA 12.1):
 
 ```bash
-PY=python
+PY=/home/jding/miniconda3/envs/tgnn/bin/python
 $PY -m pip install -e .          # install `gev` in editable mode
 $PY -m pytest tests/ -q          # 22 tests, should pass
 ```
@@ -57,7 +57,7 @@ Hardware available locally: 1× Quadro RTX 6000 (24 GB), 40 CPUs, 93 GB RAM.
 ## Quick start
 
 ```bash
-PY=python
+PY=/home/jding/miniconda3/envs/tgnn/bin/python
 
 # download a dataset into ./data/tgb/
 $PY -m gev.data.tgb_loader tgbl-wiki

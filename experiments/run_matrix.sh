@@ -9,7 +9,7 @@
 #
 # Env overrides: EPOCHS PATIENCE SEED VAL_SUB DATASETS DENSE_DATASETS
 set -u
-PY=python
+PY=/home/jding/miniconda3/envs/tgnn/bin/python
 cd "$(dirname "$0")/.."
 mkdir -p results/logs results/empirical
 WHICH="${1:-all}"

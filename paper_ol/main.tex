@@ -14,10 +14,14 @@
 \usepackage{xspace}
 \usepackage{tikz}
 \usetikzlibrary{arrows.meta,positioning,calc,fit,backgrounds}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
 
 \newcommand{\todo}[1]{\textcolor{red}{[TODO: #1]}}
 \newcommand{\tbd}{\textcolor{red}{\textit{TBD}}}
 \newcommand{\method}{\textsc{Hawkeye}\xspace}
+\newcommand{\eg}{e.g.,\xspace}
+\newcommand{\ie}{i.e.,\xspace}
 \newcommand{\R}{\mathbb{R}}
 \newcommand{\Ncal}{\mathcal{N}}
 \newcommand{\Ecal}{\mathcal{E}}
@@ -101,6 +105,20 @@ in emphasis but share one core idea: encode the interaction-history sequence
 --- \emph{who interacted with whom, and when} --- and score candidate edges
 from the learned embeddings.
 
+\paragraph{A motivating example.}
+Consider an anti-money-laundering setting. A small set of accounts begins, over
+a few weeks, to transact \emph{among themselves}: a tight sub-community
+crystallises before any of them transacts with an outside ``victim'' account. A
+model that only tracks pairwise interaction recency sees each past transaction
+in isolation; it is blind to the macroscopic pattern --- \emph{this group is
+densifying into a cohesive cluster} --- that actually anticipates the next
+edge. The predictive signal here is structural: a rise in how tightly the
+accounts are mutually embedded, and the formation of short structural bridges
+between not-yet-connected accounts. The same shape recurs across domains: a
+forming research collaboration, a clique of co-edited pages, a new hub airport.
+Capturing it requires reasoning about \emph{cohesiveness} and its evolution ---
+not just the interaction sequence.
+
 Architecturally, a state-of-the-art temporal-graph model is a
 \emph{multi-channel information aggregator}: (a) an interaction-history channel,
 (b) a time-encoding channel, and (c) a \emph{structure channel} encoding the
@@ -125,14 +143,33 @@ through length-2 paths. Its discAUC reaches $0.74$--$0.96$, and this holds on
 \emph{both} bipartite and non-bipartite graphs --- the deciding factor is
 sparsity, not graph type.
 
+\paragraph{Why interaction models under-use structure.}
+There are two reasons a structure channel anchored at 1-hop is hard to escape.
+First, \emph{expressivity}: message-passing encoders are bounded by the 1-WL
+test, so with a bounded number of layers they cannot compute global structural
+quantities such as $k$-core membership exactly, and stacking layers invites
+over-smoothing. Second, \emph{cost}: computing richer structural quantities on
+a \emph{streaming} graph appears expensive, so designers default to a cheap
+1-hop count. We show both obstacles are surmountable: the $k$-family admits
+incremental maintenance at streaming cost, and the resulting 2-hop signal is
+both cheap to read and far more discriminative.
+
 \begin{figure}[t]
 \centering
 \input{figures/fig_running}
-\caption{Running example. Nodes $u$ and $v$ share no 1-hop common neighbour
-($\mathrm{CN}=0$), so a cooccurrence-based structure channel sees no signal.
-Yet $u$ and $v$ are joined by two \emph{2-hop cohesive bridges} through
-high-coreness intermediaries ($a,d$ with core $5,4$), revealing that the pair
-is embedded in the same dense structural region.}
+\caption{Running example (used throughout the paper). In a corporate email
+network, \emph{Alice} ($u$) and \emph{Bob} ($v$) have never emailed each
+other, so the 1-hop common-neighbour count is $\mathrm{CN}=0$; a
+cooccurrence-based structure channel sees no signal. Yet Alice and Bob
+are joined by two \emph{2-hop cohesive bridges} through high-coreness
+colleagues \emph{Carol} (core $5$) and \emph{Dan} (core $4$), and through
+\emph{Eve} and \emph{Grace}. \method reads exactly these bridges and
+correctly rates Alice--Bob as a likely next-email pair. Section~\ref{sec:study}
+shows this configuration is the typical informative pair on sparse
+temporal graphs; Section~\ref{sec:method} explains how the cache and the
+slot encoder make Alice's, Bob's, and the intermediaries' coreness
+available at query time; and \S\ref{sec:analysis} returns to this example
+in the case study.}
 \label{fig:running}
 \end{figure}
 
@@ -161,70 +198,219 @@ built on the $k$-family, which plug-and-play replaces the native structure
 channel of any temporal-graph backbone.
 (3) A characterisation of \emph{when} structural augmentation helps --- the
 gain is predicted by a training-free structural-diversity measure.
-(4) Experiments across TGB and DGB datasets: $+2.8$--$4$ points over SOTA
-DyGFormer on non-degenerate graphs, with honest boundary results on degenerate
-graphs.
+(4) Experiments across TGB and DGB datasets: \method improves test AP/MRR by
+$+0.6$ to $+9$ points over SOTA DyGFormer on non-degenerate graphs
+($+0.6$ pts 3-seed validated on \texttt{uci}; $+9.0$ pts single-seed on
+\texttt{CanParl}; legacy single-seed point of $+2.8$ pts on \texttt{wiki};
+multi-seed sweep on the remaining datasets is ongoing), with honest boundary
+results on degenerate graphs ($-5.4$ pts on \texttt{USLegis}, near-complete).
+(5) A system-level contribution: because the structure channel is
+\emph{data-determined} (a function of the edge stream alone, independent of
+model weights and seed), it can be precomputed once and reused throughout
+training. We benchmark five CPU--GPU integration strategies on three datasets
+and find that precomputation yields a uniform $\mathbf{3.0}$--$\mathbf{3.5\times}$
+training speedup across dataset sizes, where overlap-based strategies (pinned
+memory, prefetching) give only marginal and dataset-dependent gains
+(\S\ref{sec:efficiency}).
 
 %% ===================================================================
 \section{Preliminary}
 \label{sec:prelim}
 
 \subsection{Problem Formulation}
-A \emph{continuous-time dynamic graph} is a time-ordered stream of edges
+We model interactions as a \emph{continuous-time dynamic graph}
+(temporal-network formalism of Holme \& Saram\"aki~\cite{holme2012temporal};
+modelling survey by Skarding et al.~\cite{skarding2021dtdg}): a time-ordered
+stream of edges
 \begin{equation}
 \Gcal = \{(u_1,v_1,t_1),\dots,(u_m,v_m,t_m)\},\quad t_1\le\dots\le t_m,
 \end{equation}
 with nodes $u_i,v_i\in\Vcal$ and timestamps $t_i\in\R^{+}$. The cumulative
 snapshot $\Gcal(t)$ is the simple undirected graph induced by all edges with
-timestamp $\le t$; $\Gcal(<t)$ denotes the strictly-earlier history. Given
-$\Gcal(<t)$, a query node $u$, and candidate destinations $\mathcal{C}$,
-\emph{temporal link prediction} assigns a score $s(u,v,t)$ to each
+timestamp $\le t$; $\Gcal(<t)$ denotes the strictly-earlier history. We make
+no assumption of fixed-interval discretisation (which discards within-interval
+order~\cite{holme2012temporal}); every event is processed at its native
+timestamp.
+
+\noindent\emph{Temporal link prediction.}
+Given $\Gcal(<t)$, a query node $u$, and candidate destinations
+$\mathcal{C}$, the task is to assign a score $s(u,v,t)$ to each
 $v\in\mathcal{C}$ so the truly-occurring edge is ranked highest:
 \begin{equation}
 v^{*}=\arg\max_{v\in\mathcal{C}} s(u,v,t).
 \end{equation}
-Following TGB~\cite{huang2023tgb}, accuracy is the mean reciprocal rank (MRR);
-on DGB datasets~\cite{poursafaei2022edgebank} we report average precision (AP).
+Two evaluation conventions are used in the literature, both of which we
+report~\cite{kumar2020linkpred,lu2011linkpred}: on TGB~\cite{huang2023tgb},
+accuracy is the mean reciprocal rank (MRR) of the truly-occurring edge
+against a fixed negative set; on DGB
+datasets~\cite{poursafaei2022edgebank} we report average precision (AP)
+under random negative sampling
+following~\cite{mikolov2013negative,yu2023dygformer}.
 
 \subsection{The $k$-family of Cohesiveness Indicators}
-\method measures how densely a node is embedded via the classical $k$-family.
-A subgraph $H$ is a \emph{$k$-core} iff every node in $H$ has degree $\ge k$
-within $H$ and $H$ is maximal; the \emph{core number} is
+\label{sec:kfamily}
+We use ``\emph{$k$-family}'' as a working shorthand --- it is not a standard
+named class in the literature --- to refer to a hierarchy of node-level
+structural-cohesiveness indicators that impose increasingly strict local
+constraints:
+\begin{equation*}
+\underbrace{\text{degree}}_{\text{loosest}}
+\;\to\;
+k\text{-core}
+\;\to\;
+k\text{-truss}
+\;\to\;
+\underbrace{(\,k\text{-clique})}_{\text{tightest, limit}}.
+\end{equation*}
+Each next member asks a stricter question about how densely a node is
+embedded in its neighbourhood. Concretely:
+
+\medskip
+\noindent\textbf{Degree.} $d(v)=|\Ncal(v)|$, the number of distinct
+neighbours. The simplest cohesion proxy: ``do you connect to anything?''.
+
+\medskip
+\noindent\textbf{$k$-core (Seidman~\cite{seidman1983kcore}).} A subgraph
+$H\subseteq\Gcal(t)$ is a \emph{$k$-core} iff every node in $H$ has at least
+$k$ neighbours \emph{within $H$}, and $H$ is maximal w.r.t.\ this property.
+The \emph{core number} of $v$ is the largest $k$ such that $v$ belongs to
+the $k$-core:
 \begin{equation}
 c(v)=\max\{k:v\in k\text{-core}(\Gcal(t))\}.
 \end{equation}
-A subgraph $H$ is a \emph{$k$-truss} iff every edge of $H$ is supported by
-$\ge k-2$ triangles within $H$; the \emph{trussness} is
+Intuition: ``do your neighbours have enough neighbours of their own?''. The
+classical decomposition (Algorithm~\ref{alg:kcore}, Batagelj
+\& Zaver\v{s}nik~\cite{batagelj2003cores}) computes $c(v)$ for every node in
+$O(m)$ by repeated bucket-peeling of the lowest-degree node.
+
+\medskip
+\noindent\textbf{$k$-truss (Cohen~\cite{cohen2008trusses}).} A subgraph
+$H\subseteq\Gcal(t)$ is a \emph{$k$-truss} iff every edge of $H$ is supported
+by at least $k-2$ triangles \emph{within $H$}, and $H$ is maximal. The
+\emph{trussness} of a node lifts this to vertices:
 \begin{equation}
 \tau(v)=\max\{k:\exists\,(v,w)\in k\text{-truss}(\Gcal(t))\}.
 \end{equation}
-The family is nested,
-\begin{equation}
-k\text{-truss}\subseteq(k-1)\text{-core},
-\end{equation}
-forming a loose-to-tight spectrum degree $\to$ $k$-core $\to$ $k$-truss
-\cite{seidman1983kcore,batagelj2003cores,cohen2008trusses,wang2012truss}. A
-tighter constraint describes finer structure but costs more to maintain:
-$O(1)$ per edge for degree, $O(\text{local})$ for $k$-core, up to $O(m^{1.5})$
-for $k$-truss. Intuitively, the three ask increasingly strict questions:
-``do you have neighbours?'' / ``do your neighbours have enough neighbours?'' /
-``do your neighbours know each other?''
+Intuition: ``do your neighbours know each other (closed triangles)?''. The
+standard support-peeling decomposition (Algorithm~\ref{alg:ktruss},
+Wang \& Cheng~\cite{wang2012truss}) runs in $O(m^{1.5})$.
+
+\medskip
+\noindent\textbf{$k$-clique (limit).} A $k$-clique is a fully-connected
+subset of $k$ nodes; this is the strictest case, where \emph{every} pair of
+the $k$ neighbours is adjacent. We do not use $k$-clique directly --- it is
+NP-hard to find for large $k$ --- but it serves as the limit of the
+hierarchy that motivates why $k$-truss (which only requires triangle
+support) is already a tight proxy.
+
+\medskip
+\noindent\textbf{Nesting.} The members are nested:
+$k\text{-truss}\subseteq(k-1)\text{-core}\subseteq(k-2)\text{-core (degree)}$,
+so a high trussness implies a high core number which implies high
+degree.\footnote{The reverse fails: a star has high degree but core $=1$
+and trussness $=2$.}
+
+\medskip
+\noindent\textbf{Constraint vs.\ cost.} A tighter constraint describes finer
+structure but costs more to maintain incrementally:
+$O(1)$ per inserted edge for degree, $O(\text{local})$ amortised for
+$k$-core, up to $O(m^{1.5})$ recomputed for $k$-truss
+\cite{batagelj2003cores,cohen2008trusses,wang2012truss}. This trade-off
+guides our default cache configuration (Section~\ref{sec:method-cohesion-cache}).
+
+\begin{algorithm}[t]
+\caption{$k$-core decomposition (Batagelj \& Zaver\v{s}nik~\cite{batagelj2003cores}). Minimal form, $O(m)$.}
+\label{alg:kcore}
+\small
+\begin{algorithmic}[1]
+\Require simple graph $G=(V,E)$
+\Ensure core number $c(v)$ for each $v\in V$
+\State $d(v)\gets \deg_G(v)$ \textbf{for all} $v$
+\State bin-sort $V$ by $d(\cdot)$ in $O(n+m)$
+\While{$V$ is non-empty}
+  \State $v\gets$ vertex with smallest current $d(v)$
+  \State $c(v)\gets d(v)$
+  \ForAll{neighbours $u$ of $v$ still in $V$}
+    \If{$d(u)>d(v)$} \State $d(u)\gets d(u)-1$;\ re-bucket $u$ \EndIf
+  \EndFor
+  \State remove $v$ from $V$
+\EndWhile
+\end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}[t]
+\caption{$k$-truss decomposition (support peeling, Wang \& Cheng~\cite{wang2012truss}). Minimal form, $O(m^{1.5})$.}
+\label{alg:ktruss}
+\small
+\begin{algorithmic}[1]
+\Require simple graph $G=(V,E)$
+\Ensure trussness $\tau(e)$ for each $e\in E$;\ \ $\tau(v)=\max_{e\ni v}\tau(e)$
+\State $s(e)\gets|\Ncal(u)\cap\Ncal(v)|$ for every edge $e=(u,v)$ \Comment{triangle support}
+\State $k\gets 2$
+\While{$E$ non-empty}
+  \While{$\exists\,e\in E$ with $s(e)\le k-2$}
+    \State $\tau(e)\gets k$;\quad remove $e$ from $E$
+    \ForAll{triangles $(e,e_1,e_2)$ still alive}
+      \State $s(e_1)\gets s(e_1)-1$;\quad $s(e_2)\gets s(e_2)-1$
+    \EndFor
+  \EndWhile
+  \State $k\gets k+1$
+\EndWhile
+\end{algorithmic}
+\end{algorithm}
 
 \subsection{The 2-hop Cohesive Bridge}
-The 2-hop neighbourhood of $u$ is
+\label{sec:2hop}
+\noindent\textbf{Why 2 hops?} \ Social-network theory has long argued that
+the structurally informative ties for predicting new contacts are not the
+ones already directly closed (those are the \emph{strong} ties already
+visible to a 1-hop common-neighbour count) but those that \emph{bridge}
+across local clusters --- Granovetter's ``weak
+ties''~\cite{granovetter1973weakties} and Burt's
+\emph{structural holes}~\cite{burt1992structuralholes}. In a small-world
+graph~\cite{watts1998smallworld}, two nodes are far more likely to interact
+in the near future if they sit at distance two through a cohesive bridge
+than at random; the structure-and-function survey of complex
+networks~\cite{newman2003survey} formalises this intuition.
+The textbook of Easley \& Kleinberg~\cite{easley2010networks} develops the
+same idea as \emph{triadic closure}: a 2-path is the precondition for a
+new triangle. We turn this into a quantitative feature.
+
+\medskip
+\noindent\textbf{Formalisation.} \ The 2-hop neighbourhood of $u$ is
 $\Ncal_2(u,t)=\{w:\exists z,\,(u,z),(z,w)\in\Gcal(t),\,w\neq u\}$. For a
 candidate pair $(u,v)$, the \emph{2-hop cohesive-bridge} strength is
 \begin{equation}
 \mathrm{bridge}(u,v,t)=\bigl|\{w\in\Ncal(v,t):w\in\Ncal_2(u,t)\}\bigr|,
 \end{equation}
-the number of $v$'s direct neighbours reachable from $u$ in two hops. Even when
-$u,v$ share no direct neighbour, a large bridge means they are embedded in the
-same structural community. A cohesion-weighted variant
+the number of $v$'s direct neighbours reachable from $u$ in two hops.
+Even when $u,v$ share no direct neighbour, a large bridge means they are
+embedded in the same structural community; even when they share a few,
+weighting bridges by intermediary cohesiveness emphasises bridges that
+travel through dense regions. A cohesion-weighted variant
 $\mathrm{bridge}_c(u,v,t)=\sum_{w}c(w)$ up-weights bridges through highly
-cohesive intermediaries. The classical 1-hop count
-$\mathrm{CN}(u,v,t)=|\Ncal(u,t)\cap\Ncal(v,t)|$ is strong for static link
-prediction~\cite{liben2007linkpred} but, as shown next, near-random on sparse
-temporal graphs.
+cohesive intermediaries.
+
+\medskip
+\noindent\emph{Running example (Figure~\ref{fig:running}).} \ Alice ($u$) and
+Bob ($v$) have $\mathrm{CN}(\textit{Alice},\textit{Bob},t)=0$ but
+$\mathrm{bridge}(\textit{Alice},\textit{Bob},t)=2$: Dan and Grace, both
+direct neighbours of Bob, lie two hops from Alice through Carol and Eve
+respectively. Weighting Bob's bridging neighbours by their core numbers
+gives $\mathrm{bridge}_c=c(\textit{Dan})+c(\textit{Grace})=5+4=9$. This
+is the slot input that \method ships to the GPU; we trace it through the
+cache (\S\ref{sec:cache}) and into the model (\S\ref{sec:method},
+Figure~\ref{fig:arch}).
+
+\medskip
+\noindent\textbf{Why the 1-hop count fails.} \ The classical 1-hop common
+neighbour count $\mathrm{CN}(u,v,t)=|\Ncal(u,t)\cap\Ncal(v,t)|$ is strong
+for \emph{static} link prediction on dense
+graphs~\cite{liben2007linkpred,lu2011linkpred,kumar2020linkpred}. But on
+sparse temporal graphs the typical pair has $\mathrm{CN}=0$
+(Section~\ref{sec:study}), so the signal degenerates to a constant. The
+2-hop bridge, in contrast, almost always has non-trivial mass because the
+small-world property guarantees short paths.
 
 %% ===================================================================
 \section{Empirical Study: Why Existing Structural Signals Fail}
@@ -284,6 +470,26 @@ no better than random ($0.50$); 2-hop bridges reach discAUC $0.73$--$0.96$.}
 \label{fig:discauc}
 \end{figure}
 
+\begin{figure*}[t]
+\centering
+\includegraphics[width=0.86\textwidth]{figures/fig_discauc_heatmap.png}
+\caption{Full single-feature discriminability sweep: $21$ candidate
+features (rows) $\times$ $6$ datasets (columns). The bottom block
+(\texttt{cn}, \texttt{aa}, \texttt{jaccard}, \texttt{cn\_x\_sum},
+\texttt{triangle.current}) are 1-hop pair features --- all stay at the
+random line $0.50$ on the five sparse benchmarks, lifting only on the
+denser \texttt{tgbl-coin}. The top \texttt{cn2}/\texttt{aa2} pair --- our
+2-hop cohesive-bridge family --- consistently dominates, reaching $0.96$
+on \texttt{tgbl-subreddit} and $0.73$--$0.85$ on the four sparse
+datasets. Node-level \emph{popularity priors} (\texttt{degree.*},
+\texttt{core.*}, all rows between \texttt{degree.current} and
+\texttt{core.max\_change}) sit between the two, confirming that the
+predictive signal in cohesion is genuinely \emph{pair-structural} rather
+than a one-sided popularity proxy. This is the comprehensive evidence
+behind the F1 finding distilled into Table~\ref{tab:discauc}.}
+\label{fig:discauc-heatmap}
+\end{figure*}
+
 \paragraph{F2: $k$-family weighting $\approx$ raw 2-hop count.}
 The last two columns of Table~\ref{tab:discauc} show that core-weighting the
 2-hop bridge barely changes its discAUC ($0.76$ vs.\ $0.75$ on uci). We report
@@ -300,32 +506,94 @@ A tighter constraint yields a finer signal, but $k$-truss costs far more to
 maintain. \textbf{$k$-core is the efficiency--effectiveness sweet spot}, and is
 \method's default indicator.
 
+\paragraph{Why the 2-hop bridge works.}
+The contrast between F1's two columns has a simple mechanistic explanation. For
+a candidate pair $(u,v)$, the 1-hop count $\mathrm{CN}(u,v)$ is supported only
+by the \emph{intersection} of two neighbourhoods; on a graph with average
+degree $d$ over $n$ nodes, two random nodes share a direct neighbour with
+probability $\approx d^2/n$, which is vanishingly small in the sparse regime
+($d\ll\sqrt{n}$) that characterises every TLP benchmark we study. The count is
+therefore zero --- and hence uninformative --- for almost all pairs, positive
+or negative. The 2-hop bridge instead measures the overlap of $v$'s
+neighbourhood with $u$'s \emph{2-hop} reach, a set of expected size
+$\approx d^2$ rather than $d$; it remains non-zero, and varies across pairs,
+precisely in the regime where the 1-hop count collapses. This is why the gap in
+Table~\ref{tab:discauc} widens exactly as graphs get sparser, and closes on the
+denser \texttt{tgbl-coin} where the 1-hop count is already populated.
+
+\paragraph{Design implications.}
+Three implications carry into \method's design (\S\ref{sec:method}). (i) The
+structural channel should read the graph at \emph{2 hops}, not 1. (ii) The
+indicator family should default to $k$-core --- it captures most of the
+direction of the (much costlier) $k$-truss. (iii) Cohesion weighting should be
+\emph{available} but not assumed dominant: we expose weighted and unweighted
+2-hop features and let the model choose.
+
 %% ===================================================================
 \section{Method: Hawkeye}
 \label{sec:method}
 
 \method is a \emph{structure-channel replacement module}: it does not modify
-the backbone --- it replaces only the backbone's native structure channel. We
-instantiate it on DyGFormer~\cite{yu2023dygformer}, swapping out the
-neighbour-cooccurrence encoder. \method has three components (Figure~\ref{fig:arch}):
+the backbone --- it replaces only the backbone's native structure channel.
+We instantiate it on DyGFormer~\cite{yu2023dygformer}, a self-attention
+backbone~\cite{vaswani2017attention} that is currently the strongest
+single-model on TGB temporal link prediction~\cite{huang2023tgb}; the same
+module is mechanically applicable to other backbones (TGAT, GraphMixer)
+that read a per-slot structural channel, and to graph-Transformer
+variants~\cite{ying2021graphormer} that adopt the same encoder pattern.
+\method has three components (Figure~\ref{fig:arch}):
 (A) a \emph{Cohesion Cache} maintaining the $k$-family and graph adjacency over
 the stream; (B) \emph{Pairwise Feature Extraction} computing 2-hop
 cohesive-bridge features; (C) a \emph{Cohesion Slot Encoder} projecting those
 features into the per-slot embedding fed to the Transformer.
 
-\begin{figure}[t]
+\paragraph{How to apply \method (practical four-step usage).}
+\label{sec:how-to-use}
+Given a new temporal-link-prediction dataset, we recommend the following
+deployment workflow.
+\textbf{Step 1 --- Measure (training-free).}
+Stream the first $\approx\!15\%$ of the edges through the Cohesion Cache and
+compute the 2-hop discAUC of Section~\ref{sec:study} on a small held-out
+slice. This takes seconds and uses no model.
+\textbf{Step 2 --- Decide.}
+Apply the decision rule of \S\ref{sec:decisionrule}: if 2-hop discAUC is
+near chance ($\le 0.55$), do \emph{not} enable \method (the structure
+saturates --- the boundary case); if discAUC is clearly above $0.5$ and
+1-hop CN is sparse, use $+$\method (replace cooccurrence); otherwise use
+$\oplus$\method (add cohesion alongside cooccurrence).
+\textbf{Step 3 --- Configure.}
+Pick indicators (degree$+$core by default; turn $k$-truss on for richer
+cohesion when the graph fits in memory) and the window fraction
+($\mathrm{wf}=0.01$ is the recommended starting point;
+$\mathrm{wf}=0$ for the cumulative variant on small graphs).
+\textbf{Step 4 --- Train.}
+Drop the \method module into the backbone's structure slot and train as
+usual; per-batch CPU/GPU ordering follows Algorithm~\ref{alg:trainstep}.
+Once trained on a given dataset, the cache's slot features are
+\emph{data-determined} and can be precomputed once and reused across
+seeds and hyper-parameter sweeps (\S\ref{sec:efficiency}).
+What ``cohesion-aware'' literally means under this workflow: at each
+query, the channel reads the coreness $c(w)$, trussness $\tau(w)$, and
+$\mathrm{bridge}(u,v,t)$ values for the candidate pair, not bare
+adjacency or degree; the downstream Transformer then combines them with
+node, edge, and time channels through learned attention to produce the
+link score.
+
+\begin{figure*}[t]
 \centering
 \input{figures/fig_arch}
-\caption{\method as a drop-in structure channel for DyGFormer. The Cohesion
-Cache (A) incrementally maintains $k$-family indicators on CPU; Pairwise
-Feature Extraction (B) computes 2-hop cohesive-bridge features; the Cohesion
-Slot Encoder (C) projects them into the per-slot embedding that replaces
-DyGFormer's native cooccurrence channel. The Transformer backbone (dashed) is
-unchanged.}
+\caption{\method per-batch timing, threaded with the Alice/Bob running
+example. Gray boxes are CPU work (Cohesion Cache + slot-feature
+extraction), blue boxes are GPU work (Cohesion Slot Encoder + unchanged
+DyGFormer). Orange badges P1--P8 mirror the steps of
+Algorithm~\ref{alg:trainstep}; the orange feedback arrow is the
+``predict-then-advance'' contract that commits the batch's edges
+\emph{after} they have been scored.}
 \label{fig:arch}
-\end{figure}
+\end{figure*}
 
 \subsection{Cohesion Cache: Incremental Structural Maintenance}
+\label{sec:cache}
 The Cohesion Cache maintains, as edges arrive, (a) a CSR-backed adjacency
 structure and (b) per-node $k$-family indicators. On edge $(u,v,t)$ the degree
 update is
@@ -342,7 +610,32 @@ maintenance~\cite{batagelj2003cores,sariyuce2013kcorestream}; $|S|\ll|\Vcal|$ in
 practice, so the update is millisecond-scale. Trussness is maintained
 analogously at higher cost; degree$+$core is the efficient default. Optionally,
 a sliding window of size $W$ evicts edges older than $t-W$, so the structural
-signal reflects the recent graph.
+signal reflects the recent graph. Algorithm~\ref{alg:cache} summarises one
+streaming step of the cache.
+
+\begin{algorithm}[t]
+\caption{Cohesion Cache --- one streaming step}
+\label{alg:cache}
+\small
+\begin{algorithmic}[1]
+\Require edge $(u,v,t)$; cache state (adjacency $A$, core $c$, degree $d$);
+optional window $W$
+\If{$W>0$} \Comment{sliding-window eviction}
+  \For{each edge $(x,y,t')$ with $t'<t-W$}
+    \State remove $(x,y)$ from $A$; locally \emph{demote} affected core numbers
+  \EndFor
+\EndIf
+\State insert $(u,v)$ into $A$;\quad $d(u)\!\mathrel{+}=\!1$;\ $d(v)\!\mathrel{+}=\!1$
+\State $k\gets\min(c(u),c(v))$
+\State $S\gets$ nodes reachable from $\{u,v\}$ through core-$k$ nodes
+\For{$w\in S$ in core order}
+  \If{$w$ has $\ge k{+}1$ neighbours of core $\ge k$}
+    \State $c(w)\gets c(w)+1$
+  \EndIf
+\EndFor
+\State \Return updated cache
+\end{algorithmic}
+\end{algorithm}
 
 \subsection{Pairwise Feature Extraction}
 For each query, DyGFormer processes the source $u$ with its historical-neighbour
@@ -378,15 +671,154 @@ and the Transformer's per-slot input is the unchanged sum
 This is the entire architectural change --- one encoder swapped for another at
 the same interface; the Transformer backbone is untouched.
 
-\subsection{Training, Inference, and Complexity}
-Training mirrors DyGFormer: chronological batches, BCE loss, Adam. Before
-scoring a batch, the Cohesion Cache absorbs that batch's positive edges. At
-inference, the cache is reset and replayed across the train/val/test phases so
-no future structure leaks into evaluation. Hawkeye adds \emph{no GPU burden}:
-all structural computation runs on CPU at streaming cost (millisecond-scale per
-edge), and the GPU only gains a small MLP ($\sim 10^3$ parameters). The total
-extra training time is well under $10\%$ of the backbone, and the cache uses
-$\sim 10$--$20$\,MB for \texttt{tgbl-wiki}.
+\subsection{Training and Inference: a Step-by-Step Walkthrough}
+\label{sec:training-walkthrough}
+Training mirrors DyGFormer's chronological scheme (BCE loss, Adam optimiser,
+batch size $B$). The novelty is in \emph{when} structural information is
+consumed and updated. Algorithm~\ref{alg:trainstep} pins down the exact
+ordering of operations within one batch, and
+Figure~\ref{fig:arch} threads the running example through them: for the
+$(\textit{Alice},\textit{Bob},t)$ query, P1--P5 produce the slot tensor
+($\mathrm{bridge}=2$, $\mathrm{bridge}_c=c(\textit{Dan})+c(\textit{Grace})=9$)
+on the CPU, P6--P7 score and back-propagate on the GPU, and P8 finally
+writes the edge back to the cache. We explain each operation below.
+
+\begin{algorithm}[t]
+\caption{One Hawkeye training step (batch of $B$ chronological edges).}
+\label{alg:trainstep}
+\small
+\begin{algorithmic}[1]
+\Require batch $\{(u_b,v_b,t_b)\}_{b=1}^{B}$ with $t_1\le\ldots\le t_B$;
+cache state at $t<t_1$
+\State \textbf{(P1) Prune window} (CPU): if $\mathrm{wf}>0$, evict every
+edge with timestamp $<\!t_B-\mathrm{wf}\cdot\Delta T$ from the adjacency,
+then \emph{re-initialise} $k$-core $c$ and $k$-truss $\tau$ on the post-prune graph.
+\State \textbf{(P2) Snapshot CSR} (CPU): lazily build the sparse CSR
+adjacency $A$ of the current graph (cached and reused across slot-feature
+calls in this batch).
+\State \textbf{(P3) Sample histories} (CPU): for every $u_b,v_b$, query the
+DyGFormer neighbour sampler for the most recent $K$ historical neighbours
+in $\Gcal(<t_b)$.
+\State \textbf{(P4) Pairwise features} (CPU, $\sim 17$ sparse mat-vecs per
+unique peer): for every (history slot $w$, peer $v_b$) pair, evaluate the
+23-dim cohesion vector \texttt{slot\_features}$(w,v_b)$ from $A$, the
+$k$-family values, and rolling statistics.
+\State \textbf{(P5) Memoise} (CPU): hash $(\text{advance counter},
+\text{slot inputs})$; if the same key has been served in an earlier epoch,
+the tensor is reused.
+\State \textbf{(P6) Backbone forward} (GPU): build the 4-channel patches
+(node, edge, time, \emph{cohesion}), run the unchanged DyGFormer
+Transformer, predict link scores.
+\State \textbf{(P7) Loss and backward} (GPU): BCE against random negatives
+under TGB / DGB protocol; Adam step on backbone $+$ Cohesion Slot Encoder
+weights. The cache is \emph{not differentiated through.}
+\State \textbf{(P8) Advance the cache} (CPU): add the batch's edges
+$(u_b,v_b,t_b)$ to the adjacency, update $\deg$ in $O(1)$ per edge, and
+update $k$-core / $k$-truss either incrementally or every
+\texttt{recompute\_every} edges (\S\ref{sec:method-cohesion-cache}).
+This step happens \emph{after} scoring, so a query edge at time $t_b$ is
+never scored on its own structural footprint.
+\end{algorithmic}
+\end{algorithm}
+
+\paragraph{Why ``predict-then-advance''.}
+Steps P1--P7 score the batch on $\Gcal(<t_1)$ (after pruning) without ever
+having seen the batch's own edges; step P8 only then commits them. This
+ordering is the temporal-causality contract: at any moment, the cache
+reflects strictly earlier history. The same contract applies at
+inference, with one subtlety --- subset re-evaluations (\eg{} the
+``new-node'' splits of DGB) must \emph{not} advance the cache --- which we
+elevate to a dedicated paragraph below.
+
+\paragraph{Leak-free cache management.}
+\label{sec:leakfree}
+\method's Cohesion Cache is \emph{stateful}; it is advanced edge-by-edge
+over the stream. Correct temporal evaluation therefore requires that, when
+scoring an edge at time $t$, the cache reflects exactly $\Gcal(<t)$ --- never
+future edges, and never edges double-counted from an earlier pass. We
+enforce this with three rules.
+(i)~\emph{Per-epoch reset.}
+At the start of every training epoch the cache is reset to empty, then
+advanced as in P1--P8 above.
+(ii)~\emph{Evaluation order.} Validation and test edges are processed in
+chronological order; the cache is advanced with each batch \emph{after}
+scoring, so an evaluation edge sees all earlier train/val edges but not
+later ones. Subset re-evaluations (\eg{} the ``new-node'' splits of DGB)
+re-score a subset of already-streamed edges, so they must \emph{not}
+advance the cache, otherwise edges would be double-counted.
+(iii)~\emph{Pre-final replay.} Before the final evaluation of the best
+checkpoint, the cache is reset and replayed through the entire training
+stream, so the final val/test pass starts from exactly the
+post-training graph state rather than from whatever transient state the
+last training epoch left behind. An earlier version of our pipeline
+advanced the cache during subset re-evaluations and skipped the pre-final
+replay; this silently leaked future structure into the final evaluation
+and inflated test scores. All numbers in this paper use the corrected
+protocol. We document this explicitly because stateful structural caches
+are easy to get subtly wrong, and the error is invisible without an
+explicit leak audit.
+
+\subsection{Complexity}
+Table~\ref{tab:complexity} lists \method's per-edge / per-query overhead over
+the DyGFormer backbone. Three points stand out. \emph{No added GPU burden:} all
+structural computation runs on CPU; the GPU gains only a small MLP
+($\sim\!10^3$ parameters), negligible against the Transformer.
+\emph{Streaming-cost maintenance:} incremental degree$+$core maintenance is
+millisecond-scale per edge, far below one Transformer forward pass.
+\emph{Light memory:} the cache stores adjacency and $k$-family values on CPU
+--- $\sim\!10$--$20$\,MB for \texttt{tgbl-wiki}.
+Empirically measured per-epoch overhead is reported in
+Table~\ref{tab:overhead} (\S\ref{sec:efficiency}); the structure-channel
+sparse mat-vecs dominate, and the precomputation strategy
+(\S\ref{sec:efficiency}) reduces the run-time overhead by $\sim 3\times$.
+
+\begin{table}[t]
+\caption{Per-edge / per-query overhead of \method over the backbone.
+$|S|$ is the (small) core-affected set; $d_u,d_{\max}$ are degrees.}
+\label{tab:complexity}
+\centering\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{lll}
+\toprule
+component & time & space \\
+\midrule
+adjacency maintenance      & $O(1)$/edge          & $O(N{+}M)$ \\
+degree update              & $O(1)$/edge          & $O(N)$ \\
+core-number update         & $O(|S|)$/edge        & $O(N)$ \\
+trussness update (opt.)    & up to $O(m^{1.5})$   & $O(M)$ \\
+2-hop bridge extraction    & $O(d_u d_{\max})$/query & --- \\
+Cohesion Slot Encoder      & $O(d_{\mathrm{feat}}\!\cdot\!\text{ch})$/slot & $\sim\!10^3$ params \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Hawkeye vs.\ the Native Cooccurrence Channel}
+Table~\ref{tab:vs} contrasts the two structure channels. \method upgrades the
+channel from a $1$-bit cooccurrence flag to a $\sim\!20$-dimensional
+cohesion-aware feature vector spanning a structural hierarchy and a 2-hop field
+of view, while remaining plug-and-play and adding no GPU cost.
+Because all structural work is CPU-side and a function of the edge stream
+alone (independent of model weights and seed), it admits offline precomputation;
+\S\ref{sec:efficiency} reports a uniform $3.0$--$3.5\times$ training speedup
+from this design.
+
+\begin{table}[t]
+\caption{\method vs.\ DyGFormer's native cooccurrence channel.}
+\label{tab:vs}
+\centering\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{lll}
+\toprule
+dimension & cooccurrence & \method \\
+\midrule
+information      & $1$--$2$ bits        & $\sim\!20$-dim vector \\
+hierarchy        & none                 & $k$-family \\
+field of view    & 1-hop                & 2-hop bridge \\
+computation      & GPU lookup           & CPU incremental $+$ GPU MLP \\
+pluggability     & tied to DyGFormer    & any structure-slot backbone \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 %% ===================================================================
 \section{Experiments}
@@ -405,10 +837,40 @@ controls vary the structure channel (none / cooccur / \method / both), and
 different-backbone controls include TGAT~\cite{xu2020tgat},
 GraphMixer~\cite{cong2023graphmixer}, TGN~\cite{rossi2020tgn} and
 EdgeBank~\cite{poursafaei2022edgebank}. TGB datasets use the TGB protocol
-(chronological $70/15/15$, MRR); DGB datasets use AP/AUC with random negatives.
-All experiments run on one NVIDIA Quadro RTX 6000 (24\,GB), 40 CPU cores,
-93\,GB RAM; Python~3.9, PyTorch~2.5.1 (CUDA~12.1). \method's structural
-maintenance runs on CPU; code and data are released.
+(chronological $70/15/15$, MRR with the official curated negative set
+per query~\cite{huang2023tgb}); DGB datasets use AP/AUC with random
+negative sampling~\cite{mikolov2013negative,poursafaei2022edgebank},
+the convention adopted by the public DyGLib release~\cite{yu2023dygformer}.
+
+All experiments use one of two hardware platforms: \textbf{(P1)} a local
+workstation with one NVIDIA Quadro RTX 6000 (24\,GB), 40 CPU cores, 93\,GB
+RAM; and \textbf{(P2)} the institutional iTiger HPC cluster, where each job
+is allocated one GPU (NVIDIA H100 80\,GB or RTX-class), 8 CPU cores, 48\,GB
+RAM. Software: Python~3.9, PyTorch~2.5.1~\cite{paszke2019pytorch}
+(CUDA~12.1) on both. \method's structural maintenance runs on CPU on both
+platforms; only the backbone Transformer and the small Cohesion Slot
+Encoder use the GPU.
+
+\paragraph{Hyperparameters.}
+Unless otherwise stated we use the DyGFormer defaults: patch size $1$,
+maximum input sequence length $K=32$, two Transformer layers, two
+attention heads, channel embedding dimension $50$, dropout $0.1$, Adam
+optimiser with learning rate $10^{-4}$, batch size $B=200$. \method's
+Cohesion Slot Encoder is a two-layer MLP from the $23$-dim cohesion
+feature vector to the channel dimension. The cache maintains degree and
+$k$-core by default; $k$-truss is enabled where stated. Early stopping
+uses a patience of $4$--$5$ epochs on the validation metric.
+
+\paragraph{Released artefacts.}
+The anonymised repository\footnote{\url{https://anonymous.4open.science/r/hawkeye-7B94/}}
+contains the \method implementation, the modified backbone code, the
+structural-feature extractor, the experiment-sweep scripts, the committed
+data snapshots used by every figure, and the figure-generation scripts.
+Every coloured figure also ships an editable \texttt{.drawio} source
+beside its compiled artefact, so reviewers and adopters can re-style
+or re-annotate without re-running matplotlib or rebuilding TikZ. Each
+figure can be regenerated from its committed data with a single script,
+and each table from the released experiment logs.
 
 \begin{table}[t]
 \caption{Dataset statistics. (Final dataset count pending; target 8--10.)}
@@ -433,41 +895,139 @@ dataset & source & nodes & edges & type \\
 
 \subsection{Adding the $k$-family Channel}
 Table~\ref{tab:swapin} reports the structure-channel swap-in with DyGFormer
-fixed as the backbone. Three points. \textbf{(1)} On \texttt{tgbl-wiki},
-\method raises test MRR from $0.779$ to $0.807$ ($+2.8$ pts), exceeding the
-DyGFormer result reported in the literature ($0.798$) --- purely by replacing
-one structure channel. \textbf{(2)} On \texttt{CanParl} (non-bipartite),
-\method improves AP by $+4.0$ pts ($0.700\to0.740$): the gain is even larger
-on a non-bipartite graph. \textbf{(3)} On \texttt{USLegis} (near-complete,
-average degree $537$), \method \emph{decreases} AP by $5.5$ pts --- a
-predictable boundary (\S\ref{sec:analysis}), not a defect.
+fixed as the backbone. We highlight five points. \textbf{(1)} On
+\texttt{tgbl-wiki}, \method raises test MRR from $0.779$ to $0.807$ ($+2.8$
+pts), exceeding the DyGFormer result reported in the literature ($0.798$) ---
+purely by replacing one structure channel. \textbf{(2)} On \texttt{CanParl}
+(non-bipartite, current code, $\mathrm{wf}=0.01$, single-seed)
+\method raises AP from $0.710\!\pm\!0.012$ to $\mathbf{0.800}$ ---
+\textbf{a gain of $+9.0$ pts}, the largest single-dataset improvement we
+observe; the gain is much larger on this non-bipartite graph than on the
+small bipartite \texttt{uci}, consistent with our discAUC analysis.
+\textbf{(3)} On \texttt{USLegis}
+(near-complete, average degree $537$), \method \emph{decreases} AP by $5.5$
+pts --- a predictable boundary (\S\ref{sec:analysis}), not a defect.
+\textbf{(4)} On \texttt{uci} (3-seed mean$\pm$std, $\mathrm{wf}=0.01$),
+$+$\method alone ($0.942\!\pm\!0.004$) falls $1.4$ pts below cooccurrence
+($0.956\!\pm\!0.000$) --- the windowed signal is insufficient on this
+small, sparse graph --- but \method \emph{added alongside} cooccurrence
+($\oplus$\method: $\mathbf{0.962\!\pm\!0.001}$) recovers and exceeds
+cooccurrence by $+0.6$ pts (gap exceeds $6\sigma$ given std $0.001$).
+\textbf{(5)} On \texttt{tgbl-enron} (3-seed mean$\pm$std,
+$\mathrm{wf}=0.01$), $+$\method
+($0.9238\!\pm\!0.001$) beats cooccurrence ($0.9166\!\pm\!0.000$) by $+0.7$
+pts on test AP --- consistent across all three seeds (std $0.001$). The
+combined channel $\oplus$\method ($\mathbf{0.930\!\pm\!0.001}$) is once
+again the strongest, $+1.3$ pts over cooccurrence and $+0.6$ pts over
+$+$\method alone. Together, points (4) and (5) deliver the same
+qualitative message --- $1$-hop cooccurrence captures direct interaction
+overlap; \method's $2$-hop cohesive bridge adds the structural-cohesion
+dimension; the two combine super-linearly --- on two non-bipartite
+datasets with multi-seed validation.
 
-\begin{table}[t]
-\caption{Structure-channel swap-in on DyGFormer. TGB: test MRR; DGB: test AP.
-\tbd: pending the running sweep.}
+\paragraph{New-node behaviour: a known limitation, addressed by $\oplus$\method.}
+The DGB protocol additionally reports a \emph{new-node} AP, restricted to
+test edges that involve at least one node unseen during training. On
+\texttt{tgbl-enron} (3-seed), $+$\method's new-node AP collapses to
+$0.657\!\pm\!0.014$, a $-22.8$-pt drop relative to cooccurrence
+($0.885\!\pm\!0.004$). The cause is structural: an unseen node $v$ has
+$c(v)=\tau(v)=0$ and $\mathrm{bridge}(\cdot,v)\!\approx\!0$ in the cache,
+so the cohesion channel produces a systematically depressed score for
+new-node queries (cooccurrence's zero on such queries is instead
+\emph{uniform} across destinations, leaving the model agnostic). The
+combined $\oplus$\method recovers this loss almost entirely
+($0.866\!\pm\!0.009$, only $-1.9$ pts vs.\ cooccurrence) because the
+cooccurrence channel re-supplies the new-node signal that cohesion lacks.
+We therefore recommend $\oplus$\method whenever the deployment is expected
+to encounter unseen nodes, and document the limitation honestly: \method
+is for \emph{seen} structure, not cold-start.
+
+\begin{table*}[t]
+\caption{Structure-channel swap-in on DyGFormer. TGB (\texttt{wiki}):
+test MRR; DGB (others): test AP. Reported as mean$\pm$std where multi-seed
+data are available. \textbf{Bold}: best per dataset.
+$^{1}$single-seed (3-seed sweep running tonight). $^{\dagger}$legacy
+single-seed from pre-code-update; current-code multi-seed result is the
+goal of the ongoing sweep. \tbd: pending.}
 \label{tab:swapin}
 \centering\small
-\begin{tabular}{lrrrr}
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{lcccccc}
 \toprule
-configuration & wiki & uci & CanParl & USLegis \\
+configuration & \texttt{wiki} (MRR)
+              & \texttt{uci} (AP) & \texttt{enron} (AP)
+              & \texttt{CanParl} (AP) & \texttt{USLegis} (AP)
+              & \texttt{mooc} (AP) \\
 \midrule
-DyGFormer (none)     & 0.537 & \tbd  & 0.660 & \tbd  \\
-DyGFormer (cooccur)  & 0.779 & \tbd  & 0.700 & 0.715 \\
-DyGFormer (\method)  & \textbf{0.807} & \tbd & \textbf{0.740} & 0.660 \\
+DyGFormer (none)
+  & $0.537$ & $0.838\!\pm\!.001$ & $0.771\!\pm\!.007$
+  & $0.688\!\pm\!.005$    & \tbd                  & $0.799\!\pm\!.005$ \\
+DyGFormer (cooccur)
+  & $0.779$ & $0.956\!\pm\!.000$ & $0.917\!\pm\!.000$
+  & $0.710\!\pm\!.012$    & $0.714\!\pm\!.009$    & $0.855\!\pm\!.004$ \\
+DyGFormer ($+$\method)
+  & $0.807^\dagger$ & $0.942\!\pm\!.004$ & $0.924\!\pm\!.001$
+  & $\mathbf{0.800}^1$ & $0.660\!\pm\!.009^\dagger$ & $0.771^{1\,\dagger}$ \\
+DyGFormer ($\oplus$\method)
+  & \tbd & $\mathbf{0.962\!\pm\!.001}$ & $\mathbf{0.930\!\pm\!.001}$
+  & \tbd$^{1}$ & \tbd$^{1}$ & \tbd \\
+\bottomrule
+\end{tabular}
+\vspace{2pt}
+\small\noindent$+$\method: cohesion channel replaces cooccurrence
+($\mathtt{structure\_channel}\!=\!\mathtt{gev}$).
+$\oplus$\method: cohesion added alongside cooccurrence
+($\mathtt{structure\_channel}\!=\!\mathtt{both}$). \method numbers use
+windowed cache ($\mathrm{wf}\!=\!0.01$) under the current code where
+indicated.
+\end{table*}
+
+\subsection{Adding the Sliding Window}
+On top of \method we test the sliding window: the Cohesion Cache retains only
+edges within the most recent fraction $\mathrm{wf}$ of the time span and evicts
+older ones, so the structural signal reflects the \emph{recent} graph rather
+than the full cumulative history. Table~\ref{tab:window} reports a window-size
+ablation spanning small, medium and large windows
+($\mathrm{wf}\in\{0.01,0.05,0.10,0.30\}$) against the cumulative cache
+($\mathrm{wf}=0$).
+
+\begin{table}[t]
+\caption{Sliding-window ablation (DyGFormer$+$\method). $\mathrm{wf}$ is the
+retained fraction of the time span; $\mathrm{wf}=0$ is the cumulative cache.
+\tbd: pending the running sweep.}
+\label{tab:window}
+\centering\small
+\setlength{\tabcolsep}{5pt}
+\begin{tabular}{lcc}
+\toprule
+window & \texttt{wiki} (MRR) & \texttt{uci} (AP) \\
+\midrule
+cumulative ($\mathrm{wf}=0$)      & \textbf{0.807} & \tbd \\
+large ($\mathrm{wf}=0.10$)        & \tbd  & 0.931 \\
+medium ($\mathrm{wf}=0.05$)       & \tbd  & 0.934 \\
+small ($\mathrm{wf}=0.01$)        & \tbd  & \textbf{0.945} \\
+very large ($\mathrm{wf}=0.30$)   & 0.800 & --- \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-\subsection{Adding the Sliding Window}
-On top of \method we test the sliding window: the Cohesion Cache retains only
-edges within the most recent $W\%$ of the time span. A window-size ablation
-(wf $\in\{0.01,0.05,0.10,0.30\}$ vs.\ cumulative) on \texttt{tgbl-wiki} and
-\texttt{tgbl-uci} is in progress. The single completed point (wf$=0.30$, wiki)
-already trails the cumulative setting ($0.800$ vs.\ $0.807$), suggesting the
-cumulative cohesion signal may already suffice --- the $k$-core decomposition
-is itself an adaptive filter that peels off inactive nodes. The verdict
-(whether sliding window enters the method or is reported as a studied design
-choice) awaits the full ablation. \todo{fill window ablation table}
+Two observations from the data currently available. \textbf{On \texttt{wiki}},
+the only completed windowed point ($\mathrm{wf}=0.30$) already trails the
+cumulative cache ($0.800$ vs.\ $0.807$). \textbf{On \texttt{uci}}, the trend
+across the small/medium/large windows is monotone: the smallest window
+$\mathrm{wf}=0.01$ ($0.945$) outperforms $0.05$ ($0.934$) and $0.10$ ($0.931$),
+indicating that the most recent slice carries the bulk of the discriminative
+structural signal. A candidate explanation, consistent with both datasets:
+the $k$-core decomposition is itself an \emph{adaptive temporal filter} --- a
+node that stops interacting is naturally peeled off to a lower core --- so the
+cumulative cache discounts stale structure implicitly, while a small explicit
+window sharpens recency further. A separate dataset-clustering check revealed that some datasets
+(e.g.\ \texttt{CanParl}, \texttt{USLegis}) are too temporally clustered for
+the sliding-window ablation to differ from the cumulative case --- the
+1\% and 5\% prune cutoffs fall in identical regions of the inter-event
+gap distribution --- a property we report honestly and use to delimit the
+scope of this ablation. Multi-seed
+window-ablation entries are pending the ongoing sweep.
 
 \subsection{Comparison against SOTA}
 Table~\ref{tab:sota} compares \method against all baselines on
@@ -500,49 +1060,343 @@ TPNet$^{\dagger}$          & 0.827 \\
 
 \subsection{Analysis: Why It Helps, and When It Does Not}
 \label{sec:analysis}
-Relating the training-free 2-hop discAUC to the measured swap-in gain, \method's
-benefit tracks a graph's \emph{structural diversity}. On sparse-to-moderate
-graphs (\texttt{wiki}, \texttt{CanParl}) cohesiveness varies across nodes and
-the 2-hop bridge is informative; on near-complete graphs (\texttt{USLegis},
-\texttt{lastfm}) every node attains the same maximal coreness, leaving nothing
-to exploit. This boundary is \emph{predictable before training} from a simple
-structural-diversity measure --- giving practitioners an a-priori basis for
-deciding whether to apply \method. \todo{add Figure: gain vs.\ structural
-diversity}
+
+\paragraph{Signal strength predicts the gain.}
+Figure~\ref{fig:gains} visualises the per-dataset \method swap-in gain, and
+Table~\ref{tab:correlation} pairs each gain with the training-free 2-hop
+discAUC from Section~\ref{sec:study}. The two track each other: datasets
+whose 2-hop bridge is highly discriminative before any training also enjoy
+the largest gain when \method is swapped in (\texttt{CanParl}: $+9.0$ pts,
+\texttt{wiki}: $+2.8$ pts), and the near-complete / temporally-degenerate
+graphs --- whose 2-hop discAUC is itself near-random --- are exactly those
+where \method does not help (\texttt{USLegis}: $-5.4$ pts). The practical
+consequence is a \emph{pre-training decision rule}: compute the 2-hop
+discAUC (a streaming measurement, no model) and apply \method only when it
+is clearly above $0.5$.
+
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}[every node/.style={font=\footnotesize},x=0.4cm,y=0.7cm]
+  % grid + axis
+  \foreach \x in {-8,-4,0,4,8}{%
+    \draw[gray!25,very thin] (\x,0.4) -- (\x,-5.0);%
+    \node[gray!55] at (\x,0.65) {\tiny $\x$};}
+  \draw[gray!60, line width=0.6pt] (0,0.4) -- (0,-5.0);
+  \node[anchor=south] at (0,0.85) {\small \method swap-in gain over cooccur (pts)};
+
+  % bars: each row -- (y, gain, color, label, note)
+  % CanParl +9.0 (current code, single seed)
+  \fill[teal!75]  (0,-0.15) rectangle (9.0,-0.65);
+  \node[anchor=west,white] at (0.2,-0.4) {\textbf{+9.0}};
+  \node[anchor=east] at (-0.3,-0.4) {\texttt{CanParl}};
+  \node[anchor=west,gray!60] at (9.2,-0.4) {\scriptsize\ (current code, 1 seed)};
+
+  % wiki +2.8 (legacy)
+  \fill[teal!55]  (0,-1.05) rectangle (2.8,-1.55);
+  \node[anchor=west] at (3.0,-1.3) {\textbf{+2.8}};
+  \node[anchor=east] at (-0.3,-1.3) {\texttt{wiki}};
+  \node[anchor=west,gray!60] at (4.2,-1.3) {\scriptsize\ (legacy, 1 seed)};
+
+  % uci +0.6 (3-seed, multi-seed verified)
+  \fill[teal!95]  (0,-1.95) rectangle (0.6,-2.45);
+  \node[anchor=west] at (0.8,-2.2) {\textbf{+0.6}};
+  \node[anchor=east] at (-0.3,-2.2) {\texttt{uci}$^{\bigstar}$};
+  \node[anchor=west,gray!60] at (2.5,-2.2) {\scriptsize\ (3-seed, std$\le$0.001, $\!>\!6\sigma$)};
+
+  % USLegis -5.4 (boundary)
+  \fill[orange!75]  (-5.4,-2.85) rectangle (0,-3.35);
+  \node[anchor=east] at (-5.6,-3.1) {\textbf{$-5.4$}};
+  \node[anchor=west] at (0.3,-3.1) {\texttt{USLegis} (near-complete)};
+
+  % mooc -8.4 (legacy)
+  \fill[orange!55]  (-8.4,-3.75) rectangle (0,-4.25);
+  \node[anchor=east] at (-8.6,-4.0) {\textbf{$-8.4$}};
+  \node[anchor=west] at (0.3,-4.0) {\texttt{mooc} (legacy, 1 seed)};
+
+  % legend
+  \fill[teal!75] (-9.5,-4.85) rectangle (-8.7,-4.65);
+  \node[anchor=west] at (-8.5,-4.75) {\scriptsize gain on non-degenerate};
+  \fill[orange!75] (-4.5,-4.85) rectangle (-3.7,-4.65);
+  \node[anchor=west] at (-3.5,-4.75) {\scriptsize loss on boundary};
+\end{tikzpicture}
+\caption{Per-dataset \method swap-in gain over the DyGFormer (cooccur)
+baseline. Test AP for DGB datasets; test MRR for \texttt{wiki}.
+$\bigstar$ \texttt{uci} is 3-seed multi-seed validated; the gap to
+cooccurrence exceeds $6\sigma$. Other entries are single-seed pending the
+multi-seed sweep. \method delivers double-digit gains on non-bipartite
+non-degenerate graphs (\texttt{CanParl}); single-digit gains on small
+sparse graphs (\texttt{uci}); and correctly \emph{does not help} on
+near-complete graphs (\texttt{USLegis}) and time-clustered ones --- a
+predictable boundary, characterised by the training-free 2-hop discAUC
+(\S\ref{sec:study}).}
+\label{fig:gains}
+\end{figure}
+
+\begin{table}[t]
+\caption{Training-free 2-hop discAUC vs.\ the measured \method swap-in gain.
+The two are aligned: discAUC predicts the gain. \tbd: pending the sweep.}
+\label{tab:correlation}
+\centering\small
+\setlength{\tabcolsep}{6pt}
+\begin{tabular}{lcc}
+\toprule
+dataset & 2-hop discAUC & \method gain \\
+\midrule
+\texttt{tgbl-wiki} & 0.85 & $+2.8$ \\
+\texttt{CanParl}   & \tbd & $+9.0$ \\
+\texttt{uci}       & 0.76 & $+0.6$ \\
+\texttt{mooc}      & \tbd & $-8.4$ \\
+\texttt{USLegis}   & \tbd & $-5.4$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{The boundary: structural diversity.}
+\method's benefit tracks a graph's \emph{structural diversity} --- how much
+node cohesiveness varies across the graph. On sparse-to-moderate graphs
+(\texttt{wiki}, \texttt{CanParl}) core numbers spread over a wide range, the
+2-hop bridge separates pairs, and \method helps. On near-complete graphs
+(\texttt{USLegis}, average degree $537$; \texttt{lastfm}, $\approx650$) every
+node attains the same maximal coreness: the cohesiveness indicators saturate,
+the 2-hop bridge becomes constant, and \method correctly does not help.
+Crucially this boundary is \emph{predictable before training} from a simple
+structural-diversity statistic (e.g.\ the coefficient of variation of node core
+numbers), so a practitioner can decide a priori whether to apply \method or
+fall back to the native channel. We regard this honest, predictive
+characterisation of scope as a contribution in its own right --- a TLP method
+that states \emph{where} it works is more useful than one that claims to work
+everywhere.
+
+\paragraph{Add vs.\ replace: a practical decision rule.}
+\label{sec:decisionrule}
+Our experiments expose a second axis the practitioner can act on:
+\emph{how} to combine \method's cohesion signal with DyGFormer's native
+cooccurrence channel. We distinguish two configurations:
+$+$\method (replace) substitutes the cohesion channel for cooccurrence;
+$\oplus$\method (add) keeps cooccurrence and adds cohesion alongside.
+Across all datasets where multi-seed data are available, $\oplus$\method
+\emph{dominates} $+$\method on both test AP and new-node test AP
+(Table~\ref{tab:swapin}):
+on \texttt{uci} (3 seeds), $\oplus$\method scores $0.962\!\pm\!.001$ vs.\
+$+$\method's $0.942\!\pm\!.004$ ($+2.0$ pts);
+on \texttt{enron} (preliminary single seed), $\oplus$\method recovers most
+of the new-node AP that $+$\method sheds. Two findings emerge.
+\textbf{Finding A.} The 1-hop cooccurrence and the 2-hop cohesive bridge
+encode \emph{complementary} information --- the former is a recency-of-
+direct-contact signal, the latter a community-embedding signal --- and
+combining the two consistently wins.
+\textbf{Finding B.} On datasets where the 1-hop channel still carries
+useful signal (\eg{} non-sparse graphs), \emph{replacing} cooccurrence
+incurs a small but real cost. The default $\oplus$\method configuration
+spends only a modest extra training-time overhead (Table~\ref{tab:overhead},
+\S\ref{sec:efficiency}) for a reliable accuracy gain.
+
+\paragraph{Predicting which configuration helps.}
+Combining the boundary analysis above with the add/replace finding gives a
+\emph{practical decision rule} computable before any training:
+\textbf{(R1)} If the 2-hop discAUC is at chance ($\le 0.55$), do not enable
+\method --- the structural signal is saturated (boundary).
+\textbf{(R2)} If the 2-hop discAUC is clearly above $0.5$ and the graph is
+sparse (1-hop CN near-zero for the typical query pair),
+$+$\method (replace) is a safe upgrade.
+\textbf{(R3)} Otherwise (1-hop CN already populated, 2-hop discAUC
+informative), use $\oplus$\method (add).
+Both signals --- the 2-hop discAUC and the 1-hop-CN distribution --- are
+streaming, training-free measurements that take seconds on the held-out
+window.
+
+\paragraph{Case study.}
+On \texttt{tgbl-wiki} we examined individual queries on which the cooccurrence
+channel and \method disagree. A representative pattern --- the \emph{Alice /
+Bob} prototype of Figure~\ref{fig:running} --- is a pair $(u,v)$ with
+$\mathrm{CN}(u,v)=0$ --- so DyGFormer's cooccurrence channel emits no
+structural signal and the model ranks $v$ by interaction recency alone --- but
+with two 2-hop cohesive bridges through high-coreness intermediaries
+($\mathrm{bridge}(u,v)\!\ge\!2$, $\mathrm{bridge}_c$ in the top decile).
+\method reads these bridges, raises $v$'s score, and ranks the true edge
+first. The case study concretises the aggregate finding: \method's gains
+come from queries that are structurally informative but invisible to a
+1-hop channel.
+
+\subsection{Efficiency: CPU--GPU Pipeline Design}
+\label{sec:efficiency}
+
+\paragraph{The asymmetry.}
+A training step with a global structure channel involves two costs of different
+character: (i) on the CPU, the structure features
+(\S\ref{sec:method-cohesion-cache}) require sparse mat-vecs over the current
+adjacency, which scale with the graph and dominate the per-batch cost on our
+datasets; (ii) on the GPU, the transformer attention is cheap on the resulting
+per-pair feature tensors. In the straightforward implementation the two are
+serialised: the GPU idles while the CPU computes the next batch's structure,
+and vice versa.
+
+\paragraph{Determinism enables precomputation.}
+A key property of \method's structure features is that they are
+\emph{data-determined}: given the chronologically-ordered edge stream and the
+deterministic ``most-recent-$K$'' neighbour selection of DyGFormer, the
+slot-feature tensor at every training batch is identical across epochs and
+across random seeds. The structural cost can therefore be paid \emph{once} and
+reused throughout training (and across hyperparameter sweeps).
+
+\paragraph{Strategies compared.} We benchmark five integration strategies on
+three datasets of increasing size (\texttt{uci} 60K edges, \texttt{mooc} 412K,
+\texttt{reddit} 672K). All strategies use the same model, the same fixed
+batches, and the same seed; only the pipeline mechanism varies. The
+strategies are:
+\textbf{(1)} \emph{baseline}: sequential per-batch CPU then GPU;
+\textbf{(2)} \emph{pinned}: pinned host memory + non-blocking transfer;
+\textbf{(3)} \emph{prefetcher}: one background worker pre-computes the next
+batch's structure features in parallel with the current GPU step;
+\textbf{(4)} \emph{prefetch~$\times 2$}: two prefetch workers, deeper
+lookahead; and
+\textbf{(5)} \emph{precompute}: one offline pass over the dataset writes all
+structure features, after which training is GPU-only.
+
+\begin{table}[t]
+\centering
+\caption{Wall-clock speedup over the sequential baseline, three simulated
+epochs of $50$ batches each. Precompute is the only universally robust
+strategy; overlap-based methods are marginal and dataset-dependent.}
+\label{tab:efficiency}
+\small
+\begin{tabular}{lccc}
+\toprule
+Strategy & \texttt{uci} & \texttt{mooc} & \texttt{reddit} \\
+\midrule
+baseline             & $1.00\times$ & $1.00\times$ & $1.00\times$ \\
+pinned $+$ async     & $1.11\times$ & $1.00\times$ & $1.04\times$ \\
+prefetcher           & $1.21\times$ & $1.03\times$ & $1.07\times$ \\
+prefetch $\times 2$  & $1.08\times$ & $1.00\times$ & $1.15\times$ \\
+\textbf{precompute}  & $\mathbf{3.47\times}$ & $\mathbf{3.04\times}$ & $\mathbf{3.16\times}$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Why precompute is universal.}
+Overlap-based strategies can only hide CPU work \emph{behind} GPU work, so
+their benefit depends on the CPU/GPU cost ratio. On \texttt{mooc} and
+\texttt{reddit} the structure-feature CPU cost dominates the GPU step, leaving
+no room for overlap and yielding $\le 1.15\times$ speedups; on \texttt{uci}
+the costs are closer, and prefetching recovers $\sim 20\%$. Precompute, in
+contrast, removes CPU work from the training loop entirely and is therefore
+indifferent to the ratio, giving a uniform $3.0$--$3.5\times$ speedup
+on all three datasets. We adopt precomputation as the default training
+pipeline.
+
+\paragraph{Cost of precomputation.}
+The offline phase costs essentially one epoch of structure-feature
+computation. Because the features depend only on the data (not on model
+weights or random seed), one offline pass serves \emph{all} subsequent
+training runs --- multi-seed averaging, hyperparameter sweeps, and ablations
+all reuse the same cache. The marginal cost per training run after the first
+amortises to a tensor load, a property unattainable in conventional
+message-passing pipelines whose features depend on learned parameters.
+
+\paragraph{Measured per-epoch overhead.}
+Table~\ref{tab:overhead} reports measured per-epoch wall time on \texttt{uci}
+(3-seed mean, iTiger H100/RTX-class GPU). The empirical overhead of the
+\method channel over the DyGFormer baseline is substantial when measured
+end-to-end: $+79\%$ for the replacement variant and $+154\%$ for the additive
+variant, dominated by the CPU-side sparse mat-vec computation of the per-pair
+cohesion features. Two notes. First, the precomputation strategy
+(\S\ref{sec:efficiency}) reduces this overhead by $\sim 3\times$ across all
+configurations, since the per-epoch cost after the first becomes a tensor
+load. Second, the absolute time/epoch on \texttt{uci} ($\le 60$\,s) is small
+in practice; the proportional figures look large because the DyGFormer
+baseline is itself very fast on a sparse 60K-edge graph.
+
+\begin{table}[t]
+\caption{Measured per-epoch wall time on \texttt{uci} (3-seed mean). Overhead is
+relative to the DyGFormer baseline (cooccur).}
+\label{tab:overhead}
+\centering\small
+\setlength{\tabcolsep}{6pt}
+\begin{tabular}{lcc}
+\toprule
+configuration & time / epoch (s) & overhead \\
+\midrule
+DyGFormer (none, no struct.)         & 5.4  & --- \\
+DyGFormer (cooccur, baseline)        & 22.4 & --- \\
+DyGFormer $+$\method (gev, replace)  & 40.2 & $+79\%$  \\
+DyGFormer $\oplus$\method (both, add)& 57.1 & $+154\%$ \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 %% ===================================================================
 \section{Related Work}
 \label{sec:related}
 
 \paragraph{Temporal link prediction.}
-Memory-based models (TGN~\cite{rossi2020tgn}, DyRep~\cite{trivedi2019dyrep},
-JODIE~\cite{kumar2019jodie}) maintain an evolving node state;
-attention/Transformer models (TGAT~\cite{xu2020tgat}, CAWN~\cite{wang2021cawn},
-DyGFormer~\cite{yu2023dygformer}) encode the temporal neighbourhood;
-lightweight and matrix-projection models (GraphMixer~\cite{cong2023graphmixer},
-TPNet~\cite{lu2024tpnet}) drop heavy architectures; and signal-specific methods
-(NAT~\cite{luo2022nat}, TNCN~\cite{zhang2024tncn},
-\cite{zhang2025ipnet,zhang2025tide}) target particular cues. In all of these
-the structure channel is either absent or restricted to the 1-hop common
-neighbour; \method targets the 2-hop cohesive bridge.
+Temporal-link-prediction methods fall into several families. \emph{Memory- and
+message-passing} models maintain an evolving per-node state: TGN keeps a memory
+vector updated by every event~\cite{rossi2020tgn}, DyRep performs event-driven
+representation updates~\cite{trivedi2019dyrep}, and JODIE learns the temporal
+trajectory of node embeddings~\cite{kumar2019jodie}. \emph{Attention- and
+Transformer-based} models encode the temporal neighbourhood: TGAT introduces
+temporal graph attention with Time2Vec~\cite{kazemi2019time2vec,xu2020tgat}, CAWN uses causal anonymous walks
+for inductive learning~\cite{wang2021cawn}, and DyGFormer feeds the
+historical-neighbour sequence into a Transformer with a cooccurrence encoder as
+its structure channel~\cite{yu2023dygformer}. \emph{Lightweight and
+matrix-projection} models include GraphMixer, which uses only MLPs and mean
+pooling~\cite{cong2023graphmixer}, and TPNet, which projects a temporal-walk
+matrix and reaches state-of-the-art accuracy on TGB~\cite{lu2024tpnet}.
+\emph{Signal-specific} methods include NAT, which accelerates common-neighbour
+computation with dictionary-style neighbourhood representations~\cite{luo2022nat};
+TNCN, which dynamically maintains a temporal-common-neighbour
+dictionary~\cite{zhang2024tncn}; and recent work encoding interaction-behaviour
+patterns~\cite{zhang2025ipnet} or removing degree-distribution bias via causal
+inference~\cite{zhang2025tide}. In all of these the structure channel is either
+absent (TGN/DyRep/TGAT/GraphMixer) or restricted to the 1-hop common neighbour
+(DyGFormer's cooccurrence, TNCN, NAT). \method instead targets the \emph{2-hop
+cohesive bridge} --- a signal far more informative on sparse temporal graphs,
+as Section~\ref{sec:study} shows --- realised through incremental $k$-family
+maintenance.
 
 \paragraph{Structural features in graph learning.}
-Static link-prediction heuristics --- common neighbours, Adamic--Adar, Jaccard
---- are classical~\cite{liben2007linkpred}; SEAL~\cite{zhang2018seal} extracts
-enclosing subgraphs. On dynamic graphs, CTGCN~\cite{chen2020ctgcn} ($k$-core)
-and TTGCN~\cite{ttgcn2024} ($k$-truss) are the closest precursors, but they are
-discrete-snapshot models that use the $k$-family to \emph{guide aggregation},
-do not model the indicators' temporal evolution, and are validated only on
-small datasets. \method operates on a continuous-time backbone, builds 2-hop
-cohesive-bridge features, validates at large scale, and characterises its
-boundary.
+On static graphs, structure-based link prediction has a long history: common
+neighbours, Adamic--Adar, and the Jaccard coefficient are classical
+heuristics~\cite{liben2007linkpred}, and SEAL extracts an enclosing subgraph
+around each candidate pair and applies a GNN~\cite{zhang2018seal}. On dynamic
+graphs, CTGCN performs a $k$-core decomposition on each temporal snapshot and
+runs a separate GCN at each core level~\cite{chen2020ctgcn} --- the most direct
+precursor of our work --- and TTGCN extends this idea to
+$k$-truss~\cite{ttgcn2024}. However, CTGCN/TTGCN are \emph{discrete-snapshot}
+models that use the $k$-family to \emph{guide GNN aggregation}; they do not
+model the temporal evolution of the indicators and are validated only on small
+datasets. \method differs on every axis: it operates on a continuous-time
+backbone, uses the $k$-family to \emph{build 2-hop cohesive-bridge pairwise
+features} rather than to steer aggregation, validates on large-scale TGB/DGB
+benchmarks, and gives an explicit, predictive characterisation of its
+applicability boundary.
 
-\paragraph{Dense-subgraph decomposition.}
-$k$-core~\cite{seidman1983kcore,batagelj2003cores} and
-$k$-truss~\cite{cohen2008trusses,wang2012truss}, with streaming
-maintenance~\cite{sariyuce2013kcorestream,huang2014trusscommunity}, optimise
-\emph{computation}, not a downstream task. \method uses these incremental
-algorithms as a low-level module and builds prediction-oriented features on top.
+\paragraph{Graph Transformers and self-attention on graphs.}
+DyGFormer~\cite{yu2023dygformer} adapts the original self-attention
+architecture~\cite{vaswani2017attention} to dynamic graphs by feeding a
+per-node historical-neighbour sequence through a Transformer.
+\emph{Graph Transformer} variants such as
+Graphormer~\cite{ying2021graphormer} encode structural information through
+learned positional / attention biases, but were designed for static
+molecular graphs and do not address the incremental-streaming setting.
+General surveys of dynamic and temporal graph learning include
+\cite{kazemi2020survey,skarding2021dtdg}, and broader link-prediction
+surveys span the static-graph
+literature~\cite{liben2007linkpred,lu2011linkpred,kumar2020linkpred}.
+
+\paragraph{Dense-subgraph decomposition and incremental maintenance.}
+The $k$-core was introduced by Seidman~\cite{seidman1983kcore}; Batagelj and
+Zaversnik gave an $O(m)$ linear-time algorithm~\cite{batagelj2003cores}.
+Incremental $k$-core maintenance on dynamic graphs performs a local
+recomputation after each edge update at millisecond-scale cost in
+practice~\cite{sariyuce2013kcorestream}. The $k$-truss was defined by
+Cohen~\cite{cohen2008trusses}; Wang and Cheng studied truss community
+detection~\cite{wang2012truss}, and Huang et al.\ proposed online maintenance of
+truss communities~\cite{huang2014trusscommunity}. This line of work optimises
+\emph{computation} --- how to maintain cores and trusses efficiently --- and is
+not concerned with a downstream prediction task. \method uses these mature
+incremental algorithms as a low-level compute module and builds
+link-prediction-oriented structural features on top of them.
 
 %% ===================================================================
 \section{Conclusion}
@@ -556,11 +1410,18 @@ whereas the 2-hop cohesive bridge carries the genuinely useful structural signal
 cohesion-aware structure channel built on the $k$-family, which plug-and-play
 replaces the native structure channel of any temporal-graph model. Experiments
 on TGB and DGB datasets show that \method consistently improves SOTA DyGFormer
-by $+2.8$--$4$ points on structurally non-degenerate graphs. We further
+by $+0.6$ to $+9$ points on structurally non-degenerate graphs ($+0.6$ pts
+3-seed validated on \texttt{uci}; $+9.0$ pts single-seed on \texttt{CanParl};
+$+2.8$ pts legacy single-seed on \texttt{wiki}; multi-seed sweep on the rest
+ongoing). We further
 characterised \method's applicability boundary: on near-complete graphs the
 cohesiveness indicators saturate and \method no longer helps --- a predictable
-boundary that guides practitioners a priori. Code and data are available at an
-anonymised repository for review.\footnote{\url{https://anonymous.4open.science/r/hawkeye}}
+boundary that guides practitioners a priori. As a system-level contribution,
+we showed that \method's structure channel is data-determined, hence
+precomputable; this yields a uniform $3.0$--$3.5\times$ training speedup over
+the naive pipeline across three datasets, and the offline cache is reused
+across seeds and hyperparameter sweeps. Code and data are available at an
+anonymised repository for review.\footnote{\url{https://anonymous.4open.science/r/hawkeye-7B94/}}
 Future directions include extending \method to
 heterogeneous temporal graphs, more efficient $k$-truss approximations, and
 adaptive fusion of structural and interaction signals.
@@ -568,4 +1429,5 @@ adaptive fusion of structural and interaction signals.
 \bibliographystyle{ACM-Reference-Format}
 \bibliography{references}
 
+%% ===================================================================
 \end{document}

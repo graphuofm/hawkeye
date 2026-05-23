@@ -6,7 +6,7 @@
 #   - --pairwise_mode cohesion : node feats + k-family pairwise (more realistic range)
 # Results -> results/window_matrix.jsonl
 set -u
-PY=python
+PY=/home/jding/miniconda3/envs/tgnn/bin/python
 cd "$(dirname "$0")/.."
 mkdir -p results/logs
 EPOCHS="${EPOCHS:-20}"; PATIENCE="${PATIENCE:-7}"; SEED="${SEED:-0}"; VAL_SUB="${VAL_SUB:-3000}"

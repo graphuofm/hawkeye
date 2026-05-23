@@ -18,3 +18,53 @@ saved_results/
 # but keep small metadata
 !data/.gitkeep
 !results/.gitkeep
+
+# build artefacts
+*.pdf
+*.aux
+*.bbl
+*.blg
+*.fdb_latexmk
+*.fls
+*.toc
+*.synctex.gz
+preview_*.tex
+
+# native compiled libs
+*.so
+*.dll
+*.dylib
+
+# slurm logs
+slurm_logs/
+*.slurm.out
+
+# Legacy / archived  
+paper/_old_latex/
+paper/figures/_archive_old/
+
+# Processed data (large)
+sota/DyGLib/processed_data/
+sota/TNCN/tgb/datasets/
+DG_data/
+
+# Build artefacts (LaTeX)
+*.pdf
+*.aux
+*.bbl
+*.blg
+*.fdb_latexmk
+*.fls
+*.toc
+*.synctex.gz
+*.out
+*.log
+preview_*.tex
+
+# Native compiled libs
+*.so
+*.dll
+*.dylib
+
+# slurm
+slurm_logs/

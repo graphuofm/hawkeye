@@ -1,7 +1,7 @@
 #!/bin/bash
 # DyGFormer-lite baseline + DyGFormer-lite + GraphEagleVision (different couplings).
 set -u
-PY=python
+PY=/home/jding/miniconda3/envs/tgnn/bin/python
 cd "$(dirname "$0")/.."
 mkdir -p results/logs
 EPOCHS=${EPOCHS:-15}; PATIENCE=${PATIENCE:-5}; SEED=${SEED:-0}; VAL_SUB=${VAL_SUB:-2000}

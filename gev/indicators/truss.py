@@ -104,13 +104,20 @@ class TrussIndicator(BaseIndicator):
 
     def _recompute(self, graph: DynamicGraph) -> Set[int]:
         old = dict(self._node_truss)
-        edge_truss = truss_decomposition(graph)
         nt: Dict[int, int] = defaultdict(int)
-        for (a, b), k in edge_truss.items():
-            if k > nt[a]:
-                nt[a] = k
-            if k > nt[b]:
-                nt[b] = k
+        from gev import native
+        if native.available():
+            # C++ kernel returns node trussness directly, indexed by node id
+            arr = native.truss(graph)
+            for nid, k in enumerate(arr):
+                if k:
+                    nt[int(nid)] = int(k)
+        else:
+            for (a, b), k in truss_decomposition(graph).items():
+                if k > nt[a]:
+                    nt[a] = k
+                if k > nt[b]:
+                    nt[b] = k
         self._node_truss = nt
         changed = {n for n in set(old) | set(nt) if old.get(n, 0) != nt.get(n, 0)}
         return changed

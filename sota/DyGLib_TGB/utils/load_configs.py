@@ -56,6 +56,10 @@ def get_link_prediction_args(is_evaluation: bool = False):
     parser.add_argument('--gev_window_fraction', type=float, default=0.0,
                         help='sliding-window for the GEV cache: prune edges older than '
                              'fraction*(t_max-t_min). 0 = cumulative graph (default)')
+    parser.add_argument('--slot_backend', type=str, default='fast', choices=['fast', 'full'],
+                        help='fast=6-dim per-pair set intersection; full=23-dim CSR features (slow but rich)')
+    parser.add_argument('--seed_offset', type=int, default=0,
+                        help='added to the run index to set the random seed; lets seed1/seed2 run as separate jobs')
 
     try:
         args = parser.parse_args()
@@ -167,6 +171,10 @@ def get_node_classification_args(is_evaluation: bool = False):
     parser.add_argument('--gev_window_fraction', type=float, default=0.0,
                         help='sliding-window for the GEV cache: prune edges older than '
                              'fraction*(t_max-t_min). 0 = cumulative graph (default)')
+    parser.add_argument('--slot_backend', type=str, default='fast', choices=['fast', 'full'],
+                        help='fast=6-dim per-pair set intersection; full=23-dim CSR features (slow but rich)')
+    parser.add_argument('--seed_offset', type=int, default=0,
+                        help='added to the run index to set the random seed; lets seed1/seed2 run as separate jobs')
 
     try:
         args = parser.parse_args()
