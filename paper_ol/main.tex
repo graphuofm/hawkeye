@@ -18,7 +18,7 @@
 \usepackage{algpseudocode}
 
 \newcommand{\todo}[1]{\textcolor{red}{[TODO: #1]}}
-\newcommand{\tbd}{\textcolor{red}{\textit{TBD}}}
+% \newcommand{\tbd}{\textcolor{red}{\textit{TBD}}}  % unused; all TBD cells replaced with em-dash + caption notes
 \newcommand{\method}{\textsc{Hawkeye}\xspace}
 \newcommand{\eg}{e.g.,\xspace}
 \newcommand{\ie}{i.e.,\xspace}
@@ -466,15 +466,6 @@ near-complete (\texttt{CanParl}, \texttt{USLegis}) where the simple
 informative --- yet the \emph{trained} \method (which uses core-weighted
 features, not the raw count) still wins on both (Table~\ref{tab:swapin}).}
 \end{table}
-
-\begin{figure}[t]
-\centering
-\includegraphics[width=0.92\columnwidth]{figures/fig_discauc.pdf}
-\caption{Discriminability AUC of 1-hop common neighbours vs.\ 2-hop cohesive
-bridges across six temporal-graph benchmarks. On sparse graphs the 1-hop CN is
-no better than random ($0.50$); 2-hop bridges reach discAUC $0.73$--$0.96$.}
-\label{fig:discauc}
-\end{figure}
 
 \begin{figure*}[t]
 \centering
